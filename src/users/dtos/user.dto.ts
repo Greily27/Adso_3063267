@@ -7,12 +7,23 @@ export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
     @ApiProperty()
-    readonly name: string;
+    readonly names: string;
 
     @IsString()
     @IsNotEmpty()
     @ApiProperty()
-    readonly lastName: string;
+    readonly lastNames: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @ApiProperty()
+    readonly phone: string;
+
+    
+    @IsString()
+    @IsNotEmpty()
+    @ApiProperty()
+    readonly address: string;
 
     @IsString()
     @IsNotEmpty()
@@ -22,17 +33,22 @@ export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
     @ApiProperty()
-    readonly docNumber: string;
+    readonly document: string;
 
     @IsString()
     @IsNotEmpty()
     @ApiProperty()
-    readonly email: string;
+    readonly photo: string;
 
     @IsString()
     @IsNotEmpty()
     @ApiProperty()
     readonly password: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @ApiProperty()
+    readonly email: string;
 
     @IsBoolean()
     @IsNotEmpty()
