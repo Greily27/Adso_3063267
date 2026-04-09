@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty } from 'class-validator';
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateCursoDto {
 
@@ -7,6 +8,17 @@ export class CreateCursoDto {
   @IsNotEmpty()
   @ApiProperty()
   nombreCurso: string;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  @ApiProperty()
+  readonly isActive: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @ApiPropertyOptional({ description: 'ID del director de curso' })
+  directorCurso?: number;
 }
 
-export class UpdateCursoDto extends PartialType(CreateCursoDto) {}
+export class UpdateCursoDto extends PartialType(CreateCursoDto) { }

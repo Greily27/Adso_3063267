@@ -1,18 +1,18 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import {Injectable,NotFoundException,BadRequestException,} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Curso } from '../entities/curso.entity';
 import { Repository } from 'typeorm';
 import { CreateCursoDto, UpdateCursoDto } from '../dtos/create-curso.dto';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class CursosService {
   constructor(
     @InjectRepository(Curso)
     private readonly cursoRepository: Repository<Curso>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) { }
 
   //======CREAR=========
@@ -25,7 +25,22 @@ export class CursosService {
       throw new BadRequestException('Ya existe un curso con ese nombre');
     }
 
-    const curso = this.cursoRepository.create(dto);
+    //validar director solo si viene
+    if (dto.directorCurso) {
+      const user = await this.userRepository.findOne({
+        where: { id: dto.directorCurso},
+      });
+
+      if (!user) {
+        throw new NotFoundException('Director de curso no existe');
+      }
+    }
+
+    const curso = this.cursoRepository.create({
+      ...dto,
+      directorCurso: dto.directorCurso?? undefined,
+    });
+
     return await this.cursoRepository.save(curso);
   }
 
@@ -65,7 +80,21 @@ export class CursosService {
       }
     }
 
-    Object.assign(curso, dto);
+    if (dto.directorCurso) {
+      const user = await this.userRepository.findOne({
+        where: { id: dto.directorCurso},
+      });
+
+      if (!user) {
+        throw new NotFoundException('Director de curso no existe');
+      }
+    }
+
+    Object.assign(curso, {
+      ...dto,
+      directorCurso: dto.directorCurso?? curso.directorCurso,
+    });
+
     return await this.cursoRepository.save(curso);
   }
 
@@ -111,6 +140,7 @@ export class CursosService {
 
     return {
       curso: curso.nombreCurso,
+      directorCurso: curso.directorCurso,
       totalEstudiantes: estudiantes.length,
       estudiantes,
     };
