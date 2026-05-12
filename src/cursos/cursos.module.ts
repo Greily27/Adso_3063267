@@ -8,7 +8,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Curso,Materia, User,Estudiante])],
+  imports: [TypeOrmModule.forFeature([Curso, Materia, User, Estudiante])],
   controllers: [CursosController],
   providers: [CursosService],
 })

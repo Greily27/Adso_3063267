@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
-import { Materia } from '../entities/materia.entity';
 import { Curso } from '../../cursos/entities/curso.entity';
 import { CreateMateriaDto, UpdateMateriaDto } from '../dto/materia.dto';
+import { Materia } from '../entities/materia.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Injectable()
 export class MateriasService {
@@ -14,10 +19,13 @@ export class MateriasService {
 
     @InjectRepository(Curso)
     private readonly cursoRepository: Repository<Curso>,
-  ) { }
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   async create(createMateriaDto: CreateMateriaDto): Promise<Materia> {
-    const { cursosIds, ...data } = createMateriaDto;
+    const { cursosIds, docenteId, ...data } = createMateriaDto;
 
     const existeMateria = await this.materiaRepository.findOne({
       where: { nombreMateria: data.nombreMateria },
@@ -41,10 +49,15 @@ export class MateriasService {
       }
     }
 
+    const docente = docenteId
+      ? await this.findDocenteAsignable(docenteId)
+      : undefined;
+
     const materia = this.materiaRepository.create({
       ...data,
       estado: data.estado ?? true,
       cursos,
+      docente,
     });
 
     return await this.materiaRepository.save(materia);
@@ -52,7 +65,7 @@ export class MateriasService {
 
   async findAll(): Promise<Materia[]> {
     return await this.materiaRepository.find({
-      relations: ['cursos'],
+      relations: ['cursos', 'docente', 'docente.roles'],
       order: {
         idMateria: 'ASC',
       },
@@ -62,24 +75,24 @@ export class MateriasService {
   async findOne(id: number): Promise<Materia> {
     const materia = await this.materiaRepository.findOne({
       where: { idMateria: id },
-      relations: ['cursos'],
+      relations: ['cursos', 'docente', 'docente.roles'],
     });
 
     if (!materia) {
-      throw new NotFoundException(`No se encontró la materia con id ${id}`);
+      throw new NotFoundException(`No se encontro la materia con id ${id}`);
     }
 
     return materia;
   }
 
-  async update(id: number, updateMateriaDto: UpdateMateriaDto): Promise<Materia> {
+  async update(
+    id: number,
+    updateMateriaDto: UpdateMateriaDto,
+  ): Promise<Materia> {
     const materia = await this.findOne(id);
-    const { cursosIds, ...data } = updateMateriaDto;
+    const { cursosIds, docenteId, ...data } = updateMateriaDto;
 
-    if (
-      data.nombreMateria &&
-      data.nombreMateria !== materia.nombreMateria
-    ) {
+    if (data.nombreMateria && data.nombreMateria !== materia.nombreMateria) {
       const existeMateria = await this.materiaRepository.findOne({
         where: { nombreMateria: data.nombreMateria },
       });
@@ -103,42 +116,35 @@ export class MateriasService {
       materia.cursos = cursos;
     }
 
+    if (docenteId) {
+      materia.docente = await this.findDocenteAsignable(docenteId);
+    }
+
     Object.assign(materia, data);
 
     return await this.materiaRepository.save(materia);
   }
 
-  async remove(id: number) {
-    const materia = await this.findOne(id);
+  private async findDocenteAsignable(docenteId: number): Promise<User> {
+    const docente = await this.userRepository.findOne({
+      where: { id: docenteId },
+      relations: ['roles'],
+    });
 
-    if (!materia.estado) {
-      throw new BadRequestException('La materia ya está desactivada');
+    if (!docente) {
+      throw new NotFoundException(`No se encontro el usuario con id ${docenteId}`);
     }
 
-    materia.estado = false;
+    const esDocente = docente.roles?.some(
+      (role) => role.name?.toUpperCase() === 'DOCENTE',
+    );
 
-    await this.materiaRepository.save(materia);
-
-    return {
-      message: 'Materia desactivada correctamente',
-      materia,
-    };
-  }
-
-  async activar(id: number) {
-    const materia = await this.findOne(id);
-
-    if (materia.estado) {
-      throw new BadRequestException('La materia ya está activa');
+    if (!esDocente) {
+      throw new BadRequestException(
+        'Solo se pueden asignar materias a usuarios con rol DOCENTE',
+      );
     }
 
-    materia.estado = true;
-
-    await this.materiaRepository.save(materia);
-
-    return {
-      message: 'Materia activada correctamente',
-      materia,
-    };
+    return docente;
   }
 }

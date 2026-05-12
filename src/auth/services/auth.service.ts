@@ -44,5 +44,24 @@ export class AuthService {
     //         access_token: this.jwtService.sign(payload),
     //     };
     // }
+    // auth.service.ts
 
+    async checkStatus(user: UserModel) {
+        const id = user.id;
+
+        const dbUser = await this.usersService.findOne(id);
+        if (!dbUser) throw new UnauthorizedException();
+
+        // Usamos 'sub' para que la estrategia pueda encontrarlo después
+        const payload = {
+            sub: dbUser.id,
+            email: dbUser.email
+        };
+
+        return {
+            user: dbUser,
+            access_token: this.jwtService.sign(payload), // Generamos el token con 'sub'
+        };
+    }
 }
+

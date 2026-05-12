@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dtos/user.dto';
 import { RolesService } from 'src/roles/services/roles.service';
 import { Curso } from 'src/cursos/entities/curso.entity';
+import { Materia } from 'src/materias/entities/materia.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,6 +14,9 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private userRepo: Repository<User>,
+
+        @InjectRepository(Materia)
+        private materiaRepo: Repository<Materia>,
 
         // @InjectRepository(Curso)
         // private cursoRepo: Repository<Curso>, // 🔥 necesario
@@ -25,7 +29,7 @@ export class UsersService {
     // =========================
     async findAll() {
         return await this.userRepo.find({
-            relations: ['roles', 'cursos'],
+            relations: ['roles', 'cursos', 'materias'],
         });
     }
 
@@ -40,6 +44,7 @@ export class UsersService {
                     modules: true,
                 },
                 cursos: true,
+                materias: true,
             },
         });
 
@@ -56,7 +61,7 @@ export class UsersService {
     async findOne(userId: number) {
         const user = await this.userRepo.findOne({
             where: { id: userId },
-            relations: ['roles', 'cursos'],
+            relations: ['roles', 'cursos', 'materias'],
         });
 
         if (!user) {
@@ -70,7 +75,7 @@ export class UsersService {
     // CREAR USUARIO
     // =========================
     async create(createUserDto: CreateUserDto) {
-        const { roleIds, password, ...userData } = createUserDto;
+        const { roleIds, materiaIds, password, ...userData } = createUserDto;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -86,14 +91,20 @@ export class UsersService {
             roles,
         });
 
-        return await this.userRepo.save(newUser);
+        const savedUser = await this.userRepo.save(newUser);
+
+        if (materiaIds) {
+            await this.asignarMateriasADocente(savedUser, materiaIds);
+        }
+
+        return await this.findOne(savedUser.id);
     }
 
     // =========================
     // ACTUALIZAR USUARIO
     // =========================
     async updateUser(id: number, updateUserDto: UpdateUserDto) {
-        const { roleIds, password, ...userData } = updateUserDto;
+        const { roleIds, materiaIds, password, ...userData } = updateUserDto;
 
         const user = await this.userRepo.findOne({
             where: { id },
@@ -120,7 +131,45 @@ export class UsersService {
 
         this.userRepo.merge(user, userData);
 
-        return await this.userRepo.save(user);
+        const savedUser = await this.userRepo.save(user);
+
+        if (materiaIds) {
+            await this.asignarMateriasADocente(savedUser, materiaIds);
+        }
+
+        return await this.findOne(savedUser.id);
+    }
+
+    private async asignarMateriasADocente(user: User, materiaIds: number[]) {
+        const esDocente = user.roles?.some(
+            (role) => role.name?.toUpperCase() === 'DOCENTE',
+        );
+
+        if (!esDocente) {
+            throw new BadRequestException(
+                'Solo se pueden asignar materias a usuarios con rol DOCENTE',
+            );
+        }
+
+        const materias = await this.materiaRepo.find({
+            where: { idMateria: In(materiaIds) },
+        });
+
+        if (materias.length !== materiaIds.length) {
+            throw new NotFoundException('Una o varias materias no existen');
+        }
+
+        await this.materiaRepo.update(
+            { docente: { id: user.id } },
+            { docente: null },
+        );
+
+        const materiasAsignadas = materias.map((materia) => ({
+            ...materia,
+            docente: user,
+        }));
+
+        await this.materiaRepo.save(materiasAsignadas);
     }
 
     // // =========================

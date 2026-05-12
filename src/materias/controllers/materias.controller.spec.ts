@@ -5,10 +5,22 @@ import { MateriasService } from '../services/materias.service';
 describe('MateriasController', () => {
   let controller: MateriasController;
 
+  const materiasServiceMock = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MateriasController],
-      providers: [MateriasService],
+      providers: [
+        {
+          provide: MateriasService,
+          useValue: materiasServiceMock,
+        },
+      ],
     }).compile();
 
     controller = module.get<MateriasController>(MateriasController);

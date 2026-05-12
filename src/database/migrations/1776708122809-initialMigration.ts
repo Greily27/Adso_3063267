@@ -1,10 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreationOfTheTablesForUserRoleStudentCourseAndSubject1775762583818 implements MigrationInterface {
-    name = 'CreationOfTheTablesForUserRoleStudentCourseAndSubject1775762583818'
+export class InitialMigration1776708122809 implements MigrationInterface {
+    name = 'InitialMigration1776708122809'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "estudiante" ("id" SERIAL NOT NULL, "tipoDocTutor" character varying(255) NOT NULL, "documentoTutor" character varying(255) NOT NULL, "emailTutor" character varying(255) NOT NULL, "nombreTutor" character varying(255) NOT NULL, "apellidoTutor" character varying(255) NOT NULL, "ocupacionTutor" character varying(255) NOT NULL, "telefonoTutor" character varying(255) NOT NULL, "promedio" character varying(255) NOT NULL, "userId" integer, "cursoId" integer NOT NULL, CONSTRAINT "REL_4118487d9679172ccb9da29aa5" UNIQUE ("userId"), CONSTRAINT "PK_c7507c4641e36b102952aefc33b" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "notas" ("idNota" SERIAL NOT NULL, "valor" numeric(5,2) NOT NULL, "descripcion" character varying(255), "materiaIdMateria" integer NOT NULL, CONSTRAINT "PK_6ef68ce0caa1eba115aa94ee4c5" PRIMARY KEY ("idNota"))`);
         await queryRunner.query(`CREATE TABLE "materias" ("idMateria" SERIAL NOT NULL, "nombreMateria" character varying(100) NOT NULL, "estado" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_455a40b9af2323e78d8a9c2c08c" PRIMARY KEY ("idMateria"))`);
         await queryRunner.query(`CREATE TABLE "curso" ("id" SERIAL NOT NULL, "isActive" boolean NOT NULL DEFAULT true, "nombreCurso" character varying(100) NOT NULL, "directorCurso" integer, CONSTRAINT "PK_76073a915621326fb85f28ecc5d" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "modules" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, "description" character varying, CONSTRAINT "UQ_8cd1abde4b70e59644c98668c06" UNIQUE ("name"), CONSTRAINT "PK_7dbefd488bd96c5bf31f0ce0c95" PRIMARY KEY ("id"))`);
@@ -24,6 +25,7 @@ export class CreationOfTheTablesForUserRoleStudentCourseAndSubject1775762583818 
         await queryRunner.query(`CREATE INDEX "IDX_cf3df86fe9fe34614ebe8e237e" ON "user_cursos" ("cursoId") `);
         await queryRunner.query(`ALTER TABLE "estudiante" ADD CONSTRAINT "FK_4118487d9679172ccb9da29aa5a" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "estudiante" ADD CONSTRAINT "FK_8547f0515b9a315eb0a8a419499" FOREIGN KEY ("cursoId") REFERENCES "curso"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "notas" ADD CONSTRAINT "FK_3704cd6ec8ffc545c17bb7087bd" FOREIGN KEY ("materiaIdMateria") REFERENCES "materias"("idMateria") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "curso_materia" ADD CONSTRAINT "FK_d50fd6cd9ce512b9324d79bdfd5" FOREIGN KEY ("cursoId") REFERENCES "curso"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
         await queryRunner.query(`ALTER TABLE "curso_materia" ADD CONSTRAINT "FK_a01961f0fb31a1be95ee5deb748" FOREIGN KEY ("materiasIdMateria") REFERENCES "materias"("idMateria") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "role_modules" ADD CONSTRAINT "FK_d94c957204d1c78e702a97cc1a9" FOREIGN KEY ("role_id") REFERENCES "role"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
@@ -43,6 +45,7 @@ export class CreationOfTheTablesForUserRoleStudentCourseAndSubject1775762583818 
         await queryRunner.query(`ALTER TABLE "role_modules" DROP CONSTRAINT "FK_d94c957204d1c78e702a97cc1a9"`);
         await queryRunner.query(`ALTER TABLE "curso_materia" DROP CONSTRAINT "FK_a01961f0fb31a1be95ee5deb748"`);
         await queryRunner.query(`ALTER TABLE "curso_materia" DROP CONSTRAINT "FK_d50fd6cd9ce512b9324d79bdfd5"`);
+        await queryRunner.query(`ALTER TABLE "notas" DROP CONSTRAINT "FK_3704cd6ec8ffc545c17bb7087bd"`);
         await queryRunner.query(`ALTER TABLE "estudiante" DROP CONSTRAINT "FK_8547f0515b9a315eb0a8a419499"`);
         await queryRunner.query(`ALTER TABLE "estudiante" DROP CONSTRAINT "FK_4118487d9679172ccb9da29aa5a"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_cf3df86fe9fe34614ebe8e237e"`);
@@ -62,6 +65,7 @@ export class CreationOfTheTablesForUserRoleStudentCourseAndSubject1775762583818 
         await queryRunner.query(`DROP TABLE "modules"`);
         await queryRunner.query(`DROP TABLE "curso"`);
         await queryRunner.query(`DROP TABLE "materias"`);
+        await queryRunner.query(`DROP TABLE "notas"`);
         await queryRunner.query(`DROP TABLE "estudiante"`);
     }
 

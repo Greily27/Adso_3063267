@@ -73,11 +73,11 @@ export class RolesService {
     // }
 
     async update(id: number, updateRoleDto: UpdateRoleDto) {
-        // 1️⃣ Buscamos el role existente
+        // 1️ Buscamos el role existente
         const role = await this.findOne(id);
         if (!role) throw new NotFoundException('Role not found');
 
-        // 2️⃣ Validamos que el nuevo nombre no exista en otro rol
+        // 2️ Validamos que el nuevo nombre no exista en otro rol
         if (updateRoleDto.name) {
             const existingRole = await this.roleRepo.findOne({
                 where: { name: updateRoleDto.name },
@@ -88,7 +88,7 @@ export class RolesService {
             }
         }
 
-        // 3️⃣ Si vienen nuevos módulos, los actualizamos
+        // 3️ Si vienen nuevos módulos, los actualizamos
         if (updateRoleDto.moduleIds) {
             const modules = await this.modulesService.findByIds(updateRoleDto.moduleIds);
             if (modules.length !== updateRoleDto.moduleIds.length) {
@@ -97,10 +97,10 @@ export class RolesService {
             role.modules = modules;
         }
 
-        // 4️⃣ Mergeamos el resto de los campos
+        // 4️ Mergeamos el resto de los campos
         this.roleRepo.merge(role, updateRoleDto);
 
-        // 5️⃣ Guardamos
+        // 5️ Guardamos
         return this.roleRepo.save(role);
     }
 
