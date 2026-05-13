@@ -6,9 +6,13 @@ import { CursosService } from './services/cursos.service';
 import { CursosController } from './controllers/cursos.controller';
 import { User } from 'src/users/entities/user.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
+import { AsignacionesModule } from 'src/asignaciones/asignaciones.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Curso, Materia, User, Estudiante])],
+  imports: [
+    TypeOrmModule.forFeature([Curso, Materia, User, Estudiante]),
+    AsignacionesModule,
+  ],
   controllers: [CursosController],
   providers: [CursosService],
 })

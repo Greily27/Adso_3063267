@@ -4,8 +4,6 @@ import {
     PrimaryGeneratedColumn,
     ManyToMany,
     OneToMany,
-    ManyToOne,
-    JoinColumn,
 } from 'typeorm';
 import { Curso } from '../../cursos/entities/curso.entity';
 import { Nota } from '../../notas/entities/nota.entity';
@@ -35,8 +33,7 @@ export class Materia {
     @OneToMany(() => Nota, (nota) => nota.materia)
     notas: Nota[];
 
-    @ManyToOne(() => User, (user) => user.materias, { nullable: true })
-    @JoinColumn({ name: 'docenteId' })
-    docente: User | null;
+    @ManyToMany(() => User, (user) => user.materias)
+    docentes: User[];
 
 }

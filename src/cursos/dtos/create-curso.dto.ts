@@ -4,11 +4,33 @@ import {
   IsBoolean,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+export class CursoAsignacionDto {
+  @IsInt()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @ApiProperty({
+    example: 1,
+    description: 'ID de la materia de la asignacion',
+  })
+  materiaId: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @ApiProperty({
+    example: 1,
+    description: 'ID del docente de la asignacion',
+  })
+  docenteId: number;
+}
 
 export class CreateCursoDto {
   @IsString()
@@ -22,9 +44,10 @@ export class CreateCursoDto {
   readonly isActive: boolean;
 
   @IsInt()
+  @IsOptional()
   @Type(() => Number)
   @ApiProperty({
-    description: 'ID del usuario que tiene el rol director de curso',
+    description: 'ID del usuario registrado como director del curso',
   })
   directorCurso: number;
 
@@ -49,6 +72,17 @@ export class CreateCursoDto {
     type: [Number],
   })
   materiasIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @IsObject({ each: true })
+  @Type(() => CursoAsignacionDto)
+  @ApiPropertyOptional({
+    description: 'Asignaciones de materia y docente que se crean con el curso',
+    type: [CursoAsignacionDto],
+  })
+  asignaciones?: CursoAsignacionDto[];
 }
 
 export class UpdateCursoDto extends PartialType(CreateCursoDto) {}

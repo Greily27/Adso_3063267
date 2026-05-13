@@ -25,7 +25,7 @@ export class MateriasService {
   ) {}
 
   async create(createMateriaDto: CreateMateriaDto): Promise<Materia> {
-    const { cursosIds, docenteId, ...data } = createMateriaDto;
+    const { cursosIds, docenteId, docenteIds, ...data } = createMateriaDto;
 
     const existeMateria = await this.materiaRepository.findOne({
       where: { nombreMateria: data.nombreMateria },
@@ -49,23 +49,25 @@ export class MateriasService {
       }
     }
 
-    const docente = docenteId
-      ? await this.findDocenteAsignable(docenteId)
-      : undefined;
+    const docentes = await this.findDocentesAsignables(
+      this.normalizarDocenteIds(docenteId, docenteIds),
+    );
 
     const materia = this.materiaRepository.create({
       ...data,
       estado: data.estado ?? true,
       cursos,
-      docente,
     });
 
-    return await this.materiaRepository.save(materia);
+    const savedMateria = await this.materiaRepository.save(materia);
+    await this.syncMateriaDocentes(savedMateria.idMateria, docentes);
+
+    return await this.findOne(savedMateria.idMateria);
   }
 
   async findAll(): Promise<Materia[]> {
     return await this.materiaRepository.find({
-      relations: ['cursos', 'docente', 'docente.roles'],
+      relations: ['cursos', 'docentes', 'docentes.roles'],
       order: {
         idMateria: 'ASC',
       },
@@ -75,7 +77,7 @@ export class MateriasService {
   async findOne(id: number): Promise<Materia> {
     const materia = await this.materiaRepository.findOne({
       where: { idMateria: id },
-      relations: ['cursos', 'docente', 'docente.roles'],
+      relations: ['cursos', 'docentes', 'docentes.roles'],
     });
 
     if (!materia) {
@@ -90,7 +92,7 @@ export class MateriasService {
     updateMateriaDto: UpdateMateriaDto,
   ): Promise<Materia> {
     const materia = await this.findOne(id);
-    const { cursosIds, docenteId, ...data } = updateMateriaDto;
+    const { cursosIds, docenteId, docenteIds, ...data } = updateMateriaDto;
 
     if (data.nombreMateria && data.nombreMateria !== materia.nombreMateria) {
       const existeMateria = await this.materiaRepository.findOne({
@@ -116,8 +118,12 @@ export class MateriasService {
       materia.cursos = cursos;
     }
 
-    if (docenteId) {
-      materia.docente = await this.findDocenteAsignable(docenteId);
+    if (docenteId !== undefined || docenteIds !== undefined) {
+      const docentes = await this.findDocentesAsignables(
+        this.normalizarDocenteIds(docenteId, docenteIds),
+      );
+      materia.docentes = docentes;
+      await this.syncMateriaDocentes(materia.idMateria, docentes);
     }
 
     Object.assign(materia, data);
@@ -125,26 +131,59 @@ export class MateriasService {
     return await this.materiaRepository.save(materia);
   }
 
-  private async findDocenteAsignable(docenteId: number): Promise<User> {
-    const docente = await this.userRepository.findOne({
-      where: { id: docenteId },
+  private normalizarDocenteIds(
+    docenteId?: number,
+    docenteIds?: number[],
+  ): number[] {
+    const ids = docenteIds ?? (docenteId ? [docenteId] : []);
+    return [...new Set(ids)];
+  }
+
+  private async findDocentesAsignables(docenteIds: number[]): Promise<User[]> {
+    if (docenteIds.length === 0) {
+      return [];
+    }
+
+    const docentes = await this.userRepository.find({
+      where: { id: In(docenteIds) },
       relations: ['roles'],
     });
 
-    if (!docente) {
-      throw new NotFoundException(`No se encontro el usuario con id ${docenteId}`);
+    if (docentes.length !== docenteIds.length) {
+      throw new NotFoundException('Uno o varios docentes no existen');
     }
 
-    const esDocente = docente.roles?.some(
-      (role) => role.name?.toUpperCase() === 'DOCENTE',
+    const docenteNoValido = docentes.find(
+      (docente) =>
+        !docente.roles?.some((role) => role.name?.toUpperCase() === 'DOCENTE'),
     );
 
-    if (!esDocente) {
+    if (docenteNoValido) {
       throw new BadRequestException(
         'Solo se pueden asignar materias a usuarios con rol DOCENTE',
       );
     }
 
-    return docente;
+    return docentes;
+  }
+
+  private async syncMateriaDocentes(
+    materiaId: number,
+    docentes: User[],
+  ): Promise<void> {
+    await this.materiaRepository.manager.query(
+      `DELETE FROM "docente_materia" WHERE "materiasIdMateria" = $1`,
+      [materiaId],
+    );
+
+    if (docentes.length === 0) {
+      return;
+    }
+
+    await this.materiaRepository.manager
+      .createQueryBuilder()
+      .relation(User, 'materias')
+      .of(docentes.map((docente) => docente.id))
+      .add(materiaId);
   }
 }

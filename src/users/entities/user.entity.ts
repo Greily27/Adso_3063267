@@ -7,7 +7,6 @@ import {
   Entity,
   JoinTable,
   ManyToMany,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -56,7 +55,10 @@ export class User {
   @ManyToMany(() => Curso, (curso) => curso.docentes)
   cursos: Curso[];
 
-  @OneToMany(() => Materia, (materia) => materia.docente)
+  @ManyToMany(() => Materia, (materia) => materia.docentes)
+  @JoinTable({
+    name: 'docente_materia',
+  })
   materias: Materia[];
 
   @OneToOne(() => Estudiante, (estudiante) => estudiante.user)

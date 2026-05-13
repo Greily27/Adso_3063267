@@ -16,6 +16,7 @@ import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { MateriasModule } from './materias/materias.module';
 import { NotasModule } from './notas/notas.module';
 import { ObservadoresModule } from './observadores/observadores.module';
+import { AsignacionesModule } from './asignaciones/asignaciones.module';
 import config from './config';
 
 @Module({
@@ -45,6 +46,7 @@ import config from './config';
     MateriasModule,
     NotasModule,
     ObservadoresModule,
+    AsignacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

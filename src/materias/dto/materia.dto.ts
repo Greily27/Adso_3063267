@@ -44,6 +44,17 @@ export class CreateMateriaDto {
     description: 'ID del usuario docente asignado a la materia',
   })
   docenteId?: number;
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @IsOptional()
+  @Type(() => Number)
+  @ApiPropertyOptional({
+    example: [1, 2],
+    description: 'IDs de los usuarios docentes asignados a la materia',
+    type: [Number],
+  })
+  docenteIds?: number[];
 }
 
 export class UpdateMateriaDto extends PartialType(CreateMateriaDto) {}

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Curso } from '../../cursos/entities/curso.entity';
+import { User } from '../../users/entities/user.entity';
 import { Materia } from '../entities/materia.entity';
 import { MateriasService } from './materias.service';
 
@@ -24,6 +25,10 @@ describe('MateriasService', () => {
         },
         {
           provide: getRepositoryToken(Curso),
+          useValue: repositoryMock,
+        },
+        {
+          provide: getRepositoryToken(User),
           useValue: repositoryMock,
         },
       ],

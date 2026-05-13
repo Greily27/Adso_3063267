@@ -1,6 +1,7 @@
 import { Estudiante } from 'src/estudiantes/entities/estudiante.entity';
 import { Materia } from '../../materias/entities/materia.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Asignacion } from 'src/asignaciones/entities/asignacione.entity';
 import {
   Column,
   Entity,
@@ -38,4 +39,7 @@ export class Curso {
     name: 'curso_materia',
   })
   materias: Materia[];
+
+  @OneToMany(() => Asignacion, (asignacion) => asignacion.curso)
+  asignaciones: Asignacion[];
 }

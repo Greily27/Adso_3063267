@@ -9,14 +9,10 @@ import { In, Repository } from 'typeorm';
 import { CreateCursoDto, UpdateCursoDto } from '../dtos/create-curso.dto';
 import { User } from 'src/users/entities/user.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
+import { AsignacionesService } from 'src/asignaciones/services/asignaciones.service';
 
 @Injectable()
 export class CursosService {
-  private readonly directorCursoRoleNames = [
-    'directorcurso',
-    'directordecurso',
-  ];
-
   constructor(
     @InjectRepository(Curso)
     private readonly cursoRepository: Repository<Curso>,
@@ -26,11 +22,14 @@ export class CursosService {
 
     @InjectRepository(Materia)
     private readonly materiaRepository: Repository<Materia>,
+
+    private readonly asignacionesService: AsignacionesService,
   ) {}
 
   //======CREAR=========
   async create(dto: CreateCursoDto) {
-    const { directorCurso, docentesIds, materiasIds, ...data } = dto;
+    const { directorCurso, docentesIds, materiasIds, asignaciones, ...data } =
+      dto;
     const existing = await this.cursoRepository.findOne({
       where: { nombreCurso: data.nombreCurso },
     });
@@ -40,8 +39,18 @@ export class CursosService {
     }
 
     await this.validateDirectorCurso(directorCurso);
-    const docentes = await this.findDocentesByIds(docentesIds);
-    const materias = await this.findMateriasByIds(materiasIds);
+    const docentes = await this.findDocentesByIds(
+      this.mergeIds(
+        docentesIds,
+        asignaciones?.map((asignacion) => asignacion.docenteId),
+      ),
+    );
+    const materias = await this.findMateriasByIds(
+      this.mergeIds(
+        materiasIds,
+        asignaciones?.map((asignacion) => asignacion.materiaId),
+      ),
+    );
 
     const curso = this.cursoRepository.create({
       ...data,
@@ -50,14 +59,23 @@ export class CursosService {
       materias,
     });
 
-    return await this.cursoRepository.save(curso);
+    const savedCurso = await this.cursoRepository.save(curso);
+
+    if (asignaciones && asignaciones.length > 0) {
+      await this.asignacionesService.createManyForCurso(
+        savedCurso.id,
+        asignaciones,
+      );
+    }
+
+    return await this.findOne(savedCurso.id);
   }
 
   //========LISTAR========
   async findAll() {
     return await this.cursoRepository.find({
       where: { isActive: true },
-      relations: ['estudiantes', 'docentes', 'materias'],
+      relations: ['estudiantes', 'docentes', 'materias', 'asignaciones'],
     });
   }
 
@@ -70,6 +88,7 @@ export class CursosService {
         'estudiantes.user',
         'docentes',
         'materias',
+        'asignaciones',
       ],
     });
 
@@ -82,7 +101,8 @@ export class CursosService {
 
   //=======ACTUALIZAR============
   async update(id: number, dto: UpdateCursoDto) {
-    const { directorCurso, docentesIds, materiasIds, ...data } = dto;
+    const { directorCurso, docentesIds, materiasIds, asignaciones, ...data } =
+      dto;
     const curso = await this.findOne(id);
 
     if (data.nombreCurso) {
@@ -108,11 +128,35 @@ export class CursosService {
       curso.materias = await this.findMateriasByIds(materiasIds);
     }
 
+    if (asignaciones !== undefined) {
+      curso.docentes = await this.findDocentesByIds(
+        this.mergeIds(
+          curso.docentes?.map((docente) => docente.id),
+          asignaciones.map((asignacion) => asignacion.docenteId),
+        ),
+      );
+      curso.materias = await this.findMateriasByIds(
+        this.mergeIds(
+          curso.materias?.map((materia) => materia.idMateria),
+          asignaciones.map((asignacion) => asignacion.materiaId),
+        ),
+      );
+    }
+
     Object.assign(curso, {
       ...data,
     });
 
-    return await this.cursoRepository.save(curso);
+    const savedCurso = await this.cursoRepository.save(curso);
+
+    if (asignaciones !== undefined) {
+      await this.asignacionesService.replaceForCurso(
+        savedCurso.id,
+        asignaciones,
+      );
+    }
+
+    return await this.findOne(savedCurso.id);
   }
 
   //======DESACTIVAR=========
@@ -146,6 +190,7 @@ export class CursosService {
         'estudiantes.user',
         'docentes',
         'materias',
+        'asignaciones',
       ],
     });
 
@@ -173,24 +218,17 @@ export class CursosService {
     };
   }
 
-  private async validateDirectorCurso(userId: number): Promise<User> {
+  private async validateDirectorCurso(userId?: number): Promise<User | null> {
+    if (userId === undefined || userId === null) {
+      return null;
+    }
+
     const user = await this.userRepository.findOne({
-      where: { id: userId, isActive: true },
-      relations: ['roles'],
+      where: { id: userId },
     });
 
     if (!user) {
       throw new NotFoundException('Director de curso no existe');
-    }
-
-    const hasDirectorRole = user.roles?.some((role) =>
-      this.directorCursoRoleNames.includes(this.normalizeRoleName(role.name)),
-    );
-
-    if (!hasDirectorRole) {
-      throw new BadRequestException(
-        'El usuario asignado no tiene el rol director de curso',
-      );
     }
 
     return user;
@@ -247,11 +285,7 @@ export class CursosService {
     return materias;
   }
 
-  private normalizeRoleName(roleName: string) {
-    return roleName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .toLowerCase();
+  private mergeIds(ids?: number[], idsFromAsignaciones?: number[]) {
+    return [...new Set([...(ids ?? []), ...(idsFromAsignaciones ?? [])])];
   }
 }

@@ -108,7 +108,7 @@ export class UsersService {
 
         const user = await this.userRepo.findOne({
             where: { id },
-            relations: ['roles'],
+            relations: ['roles', 'materias'],
         });
 
         if (!user) throw new NotFoundException('User not found');
@@ -159,17 +159,8 @@ export class UsersService {
             throw new NotFoundException('Una o varias materias no existen');
         }
 
-        await this.materiaRepo.update(
-            { docente: { id: user.id } },
-            { docente: null },
-        );
-
-        const materiasAsignadas = materias.map((materia) => ({
-            ...materia,
-            docente: user,
-        }));
-
-        await this.materiaRepo.save(materiasAsignadas);
+        user.materias = materias;
+        await this.userRepo.save(user);
     }
 
     // // =========================
