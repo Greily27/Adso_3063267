@@ -30,4 +30,7 @@ export class Nota {
     nullable: false,
   })
   materia: Materia;
+
+  @Column({ type: 'integer', nullable: true })
+  periodo: number | null;
 }

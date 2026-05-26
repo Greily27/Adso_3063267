@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Asignacion } from '../../asignaciones/entities/asignacione.entity';
 import { Materia } from '../../materias/entities/materia.entity';
+import { Periodo } from '../../periodo/entities/periodo.entity';
 import { Nota } from '../entities/nota.entity';
 import { NotasService } from './notas.service';
 
@@ -25,6 +27,14 @@ describe('NotasService', () => {
         },
         {
           provide: getRepositoryToken(Materia),
+          useValue: repositoryMock,
+        },
+        {
+          provide: getRepositoryToken(Asignacion),
+          useValue: repositoryMock,
+        },
+        {
+          provide: getRepositoryToken(Periodo),
           useValue: repositoryMock,
         },
       ],

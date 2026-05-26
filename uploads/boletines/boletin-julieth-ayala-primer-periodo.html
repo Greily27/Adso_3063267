@@ -1,0 +1,351 @@
+<!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <title>Boletin</title>
+        <style>
+          @page {
+            size: letter portrait;
+            margin: 0;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          body {
+            background: #fff;
+            color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10.5px;
+            line-height: 1.18;
+          }
+
+          .sheet {
+            width: 100%;
+            min-height: 279.4mm;
+            page-break-after: always;
+            border-top: 4px solid #222;
+            padding: 10mm 12mm;
+          }
+
+          .sheet:last-child {
+            page-break-after: auto;
+          }
+
+          .school-header {
+            display: grid;
+            grid-template-columns: 82px 1fr 90px;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+          }
+
+          .seal {
+            display: grid;
+            place-items: center;
+            width: 66px;
+            height: 66px;
+            justify-self: center;
+          }
+
+          .seal img {
+            display: block;
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+          }
+
+          .school-copy {
+            display: grid;
+            justify-items: center;
+            text-align: center;
+          }
+
+          .school-copy h1,
+          .school-copy h2,
+          .school-copy strong,
+          .school-copy span {
+            margin: 0;
+          }
+
+          .school-copy h1 {
+            font-size: 18px;
+            line-height: 1.05;
+          }
+
+          .school-copy h2 {
+            margin-top: 9px;
+            font-size: 14px;
+            letter-spacing: 0;
+          }
+
+          .school-copy span {
+            font-size: 9px;
+          }
+
+          .year-box {
+            display: grid;
+            justify-items: center;
+            border: 1px solid #555;
+            padding: 5px;
+            text-align: center;
+          }
+
+          .year-box span {
+            font-size: 9px;
+            text-transform: uppercase;
+          }
+
+          .year-box strong {
+            font-size: 15px;
+          }
+
+          .student-grid {
+            display: grid;
+            grid-template-columns: 1.7fr 0.7fr 0.7fr;
+            border: 1px solid #555;
+            margin-bottom: 0;
+          }
+
+          .student-grid div {
+            display: flex;
+            gap: 3px;
+            min-width: 0;
+            border-right: 1px solid #aaa;
+            border-bottom: 1px solid #aaa;
+            padding: 3px 6px;
+          }
+
+          .student-grid div:nth-child(3n) {
+            border-right: 0;
+          }
+
+          .student-grid div:nth-last-child(-n + 3) {
+            border-bottom: 0;
+          }
+
+          .student-grid span {
+            flex: 0 0 auto;
+            font-size: 10px;
+          }
+
+          .student-grid strong {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .subject-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 0;
+          }
+
+          .subject-col {
+            width: 36%;
+          }
+
+          .ihs-col {
+            width: 8%;
+          }
+
+          .valuation-col {
+            width: 31%;
+          }
+
+          .fault-col {
+            width: 12.5%;
+          }
+
+          .subject-table th,
+          .subject-table td {
+            border: 1px solid #888;
+            padding: 2px 5px;
+            vertical-align: middle;
+          }
+
+          .subject-table th {
+            background: #e6e6e6;
+            font-size: 13px;
+            line-height: 1.05;
+            text-align: center;
+            text-transform: uppercase;
+          }
+
+          .subject-summary-row td {
+            height: 28px;
+          }
+
+          .subject-summary-row td:not(:first-child) {
+            text-align: center;
+          }
+
+          .subject-summary-row strong,
+          .subject-summary-row span,
+          .subject-summary-row small {
+            display: block;
+          }
+
+          .subject-summary-row td:first-child strong {
+            font-size: 11px;
+          }
+
+          .subject-summary-row small {
+            font-size: 9px;
+          }
+
+          .performance-row td {
+            border-top: 0;
+            padding: 2px 8px;
+          }
+
+          .performance-row strong {
+            display: inline-block;
+            width: 34px;
+            text-align: right;
+            padding-right: 7px;
+          }
+
+          .final-summary {
+            display: flex;
+            justify-content: flex-end;
+            gap: 24px;
+            border: 1px solid #555;
+            border-top: 0;
+            padding: 5px 8px;
+            font-size: 11px;
+          }
+
+          @media print {
+            .sheet {
+              break-after: page;
+            }
+
+            .sheet:last-child {
+              break-after: auto;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        
+      <section class="sheet">
+        <header class="school-header">
+          <div class="seal">
+            <img src="http://localhost:4200/images/institucion/colplinista.png" alt="Logo institucional">
+          </div>
+          <div class="school-copy">
+            <h1>Institucion Educativa Tecnica Plinio Mendoza Neira</h1>
+            <span>Toca, Boyaca</span>
+            <strong>Sede: Integrado - Jornada: Manana</strong>
+            <span>Inscripcion al Dane No. 115238 - 000698 NIT. 891.855.144 - 4</span>
+            <h2>INFORME DE EVALUACION ACADEMICA</h2>
+          </div>
+          <div class="year-box">
+            <span>Ano lectivo</span>
+            <strong>2026</strong>
+          </div>
+        </header>
+
+        <section class="student-grid">
+          <div class="student-name"><span>ESTUDIANTE:</span><strong>Julieth Ayala</strong></div>
+          <div><span>GRADO:</span><strong>6A</strong></div>
+          <div><span>CURSO:</span><strong>6A</strong></div>
+          <div class="student-name"><span>DOCUMENTO:</span><strong>1002374926</strong></div>
+          <div><span>PERIODO:</span><strong>Primer Período</strong></div>
+          <div><span>PROMEDIO:</span><strong>2.8</strong></div>
+        </section>
+
+        
+          <table class="subject-table">
+            <colgroup>
+              <col class="subject-col">
+              <col class="ihs-col">
+              <col class="valuation-col">
+              <col class="fault-col">
+              <col class="fault-col">
+            </colgroup>
+            <thead>
+              <tr><th colspan="5">INGLÉS</th></tr>
+            </thead>
+            <tbody>
+              <tr class="subject-summary-row">
+                <td><strong>Inglés</strong><small>Prof: Adela Rojas</small></td>
+                <td><strong>IHS</strong><span>3</span></td>
+                <td><strong>Valoracion: 3.7 - BASICO</strong><span>1P: 3.7</span></td>
+                <td><strong>FJ: 0</strong><span>NA: 3.7</span></td>
+                <td><strong>FNJ: 0</strong><span>1P:FJ: 0</span></td>
+              </tr>
+              
+                <tr class="performance-row">
+                  <td colspan="5">
+                    <strong>3.6</strong>
+                    <span>- taller 1</span>
+                  </td>
+                </tr>
+              
+                <tr class="performance-row">
+                  <td colspan="5">
+                    <strong>4.9</strong>
+                    <span>- prueba nota</span>
+                  </td>
+                </tr>
+              
+                <tr class="performance-row">
+                  <td colspan="5">
+                    <strong>2.6</strong>
+                    <span>- taller verbo to be</span>
+                  </td>
+                </tr>
+              
+            </tbody>
+          </table>
+        
+          <table class="subject-table">
+            <colgroup>
+              <col class="subject-col">
+              <col class="ihs-col">
+              <col class="valuation-col">
+              <col class="fault-col">
+              <col class="fault-col">
+            </colgroup>
+            <thead>
+              <tr><th colspan="5">SOCIALES</th></tr>
+            </thead>
+            <tbody>
+              <tr class="subject-summary-row">
+                <td><strong>Sociales</strong><small>Prof: Juan Carlos Becerra</small></td>
+                <td><strong>IHS</strong><span>1</span></td>
+                <td><strong>Valoracion: 2.0 - BAJO</strong><span>1P: 2.0</span></td>
+                <td><strong>FJ: 0</strong><span>NA: 2.0</span></td>
+                <td><strong>FNJ: 0</strong><span>1P:FJ: 0</span></td>
+              </tr>
+              
+                <tr class="performance-row">
+                  <td colspan="5">
+                    <strong>2.0</strong>
+                    <span>- Registro academico del periodo.</span>
+                  </td>
+                </tr>
+              
+            </tbody>
+          </table>
+        
+
+        <footer class="final-summary">
+          <span>Resultado: <strong>En seguimiento</strong></span>
+          <span>Promedio final: <strong>2.8</strong></span>
+        </footer>
+      </section>
+    
+      </body>
+      </html>

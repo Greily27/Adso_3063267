@@ -52,6 +52,14 @@ export class CreateNotaDto {
     description: 'ID de la materia asociada a la nota',
   })
   materiaId: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @ApiProperty({
+    example: 1,
+    description: 'ID del periodo asociado a la nota',
+  })
+  periodoId: number;
 }
 
 export class UpdateNotaDto extends PartialType(CreateNotaDto) {}

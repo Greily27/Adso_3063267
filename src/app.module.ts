@@ -17,6 +17,8 @@ import { MateriasModule } from './materias/materias.module';
 import { NotasModule } from './notas/notas.module';
 import { ObservadoresModule } from './observadores/observadores.module';
 import { AsignacionesModule } from './asignaciones/asignaciones.module';
+import { PeriodoModule } from './periodo/periodo.module';
+import { BoletinesModule } from './boletines/boletines.module';
 import config from './config';
 
 @Module({
@@ -47,6 +49,8 @@ import config from './config';
     NotasModule,
     ObservadoresModule,
     AsignacionesModule,
+    PeriodoModule,
+    BoletinesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

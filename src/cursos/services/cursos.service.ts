@@ -202,7 +202,6 @@ export class CursosService {
       id: est.user.id,
       nombres: est.user.names,
       apellidos: est.user.lastNames,
-      promedio: est.promedio,
     }));
 
     return {
@@ -253,9 +252,7 @@ export class CursosService {
 
     const invalidDocente = docentes.find(
       (docente) =>
-        !docente.roles?.some(
-          (role) => role.name?.toUpperCase() === 'DOCENTE',
-        ),
+        !docente.roles?.some((role) => role.name?.toUpperCase() === 'DOCENTE'),
     );
 
     if (invalidDocente) {
