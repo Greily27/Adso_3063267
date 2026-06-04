@@ -55,6 +55,44 @@ export class UsersService {
         return user;
     }
 
+    async findOneByEmail(email: string) {
+        return await this.userRepo.findOne({
+            where: { email },
+        });
+    }
+
+    async savePasswordResetToken(
+        userId: number,
+        resetPasswordToken: string,
+        resetPasswordTokenExpires: Date,
+    ) {
+        await this.userRepo.update(userId, {
+            resetPasswordToken,
+            resetPasswordTokenExpires,
+        });
+    }
+
+    async findByPasswordResetToken(resetPasswordToken: string) {
+        return await this.userRepo.findOne({
+            where: { resetPasswordToken },
+        });
+    }
+
+    async clearPasswordResetToken(userId: number) {
+        await this.userRepo.update(userId, {
+            resetPasswordToken: null,
+            resetPasswordTokenExpires: null,
+        });
+    }
+
+    async updatePasswordAndClearResetToken(user: User, password: string) {
+        user.password = await bcrypt.hash(password, 10);
+        user.resetPasswordToken = null;
+        user.resetPasswordTokenExpires = null;
+
+        return await this.userRepo.save(user);
+    }
+
     // =========================
     // BUSCAR UNO
     // =========================

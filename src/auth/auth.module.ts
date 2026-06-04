@@ -9,6 +9,7 @@ import { ConfigType } from '@nestjs/config';
 import config from '../config';
 import { ModulesGuard } from './guards/modules.guard.guard';
 import { JwtAuthGuard } from './guards/auth.guard';
+import { PasswordResetMailService } from './services/password-reset-mail.service';
 
 @Module({
   imports: [
@@ -23,7 +24,13 @@ import { JwtAuthGuard } from './guards/auth.guard';
     }),
   ],
   // providers: [AuthService, JwtStrategy],
-  providers: [AuthService, ModulesGuard, JwtAuthGuard, JwtStrategy], // 🔹 AuthService incluido
+  providers: [
+    AuthService,
+    ModulesGuard,
+    JwtAuthGuard,
+    JwtStrategy,
+    PasswordResetMailService,
+  ],
   controllers: [AuthController],
   exports: [AuthService, ModulesGuard, JwtAuthGuard],
 })

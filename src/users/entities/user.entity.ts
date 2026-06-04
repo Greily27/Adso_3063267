@@ -40,6 +40,12 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   password: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  resetPasswordToken: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetPasswordTokenExpires: Date | null;
+
   @Column({ type: 'varchar', length: 255 })
   email: string;
 

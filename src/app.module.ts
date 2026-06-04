@@ -19,6 +19,7 @@ import { ObservadoresModule } from './observadores/observadores.module';
 import { AsignacionesModule } from './asignaciones/asignaciones.module';
 import { PeriodoModule } from './periodo/periodo.module';
 import { BoletinesModule } from './boletines/boletines.module';
+import { HorariosModule } from './horarios/horarios.module';
 import config from './config';
 
 @Module({
@@ -35,6 +36,12 @@ import config from './config';
         POSTGRES_HOST: Joi.string().required(),
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRES_IN: Joi.number().required(),
+        MAIL_HOST: Joi.string().optional(),
+        MAIL_PORT: Joi.number().optional(),
+        MAIL_SECURE: Joi.boolean().optional(),
+        MAIL_USER: Joi.string().optional(),
+        MAIL_PASSWORD: Joi.string().optional(),
+        MAIL_FROM: Joi.string().optional(),
       }),
     }),
     DatabaseModule,
@@ -49,6 +56,7 @@ import config from './config';
     NotasModule,
     ObservadoresModule,
     AsignacionesModule,
+    HorariosModule,
     PeriodoModule,
     BoletinesModule,
   ],

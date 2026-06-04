@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -42,5 +43,12 @@ export class MateriasController {
     @Body() updateMateriaDto: UpdateMateriaDto,
   ) {
     return this.materiasService.update(id, updateMateriaDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar materia' })
+  @ApiResponse({ status: 200, description: 'Materia eliminada correctamente' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.materiasService.remove(id);
   }
 }

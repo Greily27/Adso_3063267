@@ -131,6 +131,40 @@ export class MateriasService {
     return await this.materiaRepository.save(materia);
   }
 
+  async remove(id: number): Promise<Materia> {
+    const materia = await this.materiaRepository.findOne({
+      where: { idMateria: id },
+      relations: ['cursos', 'docentes', 'notas'],
+    });
+
+    if (!materia) {
+      throw new NotFoundException(`No se encontro la materia con id ${id}`);
+    }
+
+    if (materia.notas?.length > 0) {
+      throw new BadRequestException(
+        'No se puede eliminar la materia porque tiene notas registradas',
+      );
+    }
+
+    await this.materiaRepository.manager.transaction(async (manager) => {
+      await manager.query(`DELETE FROM "asignaciones" WHERE "materiaId" = $1`, [
+        id,
+      ]);
+      await manager.query(
+        `DELETE FROM "docente_materia" WHERE "materiasIdMateria" = $1`,
+        [id],
+      );
+      await manager.query(
+        `DELETE FROM "curso_materia" WHERE "materiasIdMateria" = $1`,
+        [id],
+      );
+      await manager.remove(Materia, materia);
+    });
+
+    return materia;
+  }
+
   private normalizarDocenteIds(
     docenteId?: number,
     docenteIds?: number[],
