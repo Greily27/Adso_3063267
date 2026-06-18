@@ -20,6 +20,7 @@ import { AsignacionesModule } from './asignaciones/asignaciones.module';
 import { PeriodoModule } from './periodo/periodo.module';
 import { BoletinesModule } from './boletines/boletines.module';
 import { HorariosModule } from './horarios/horarios.module';
+import { AuditoriosModule } from './auditorios/auditorios.module';
 import config from './config';
 
 @Module({
@@ -56,6 +57,7 @@ import config from './config';
     NotasModule,
     ObservadoresModule,
     AsignacionesModule,
+    AuditoriosModule,
     HorariosModule,
     PeriodoModule,
     BoletinesModule,

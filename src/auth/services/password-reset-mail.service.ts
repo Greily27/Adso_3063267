@@ -55,7 +55,7 @@ export class PasswordResetMailService {
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Recuperacion de contrasena</title>
+          <title>Recuperacion de contraseña</title>
         </head>
         <body style="margin:0; padding:0; background-color:#f3f6fb; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f3f6fb; padding:32px 16px;">
@@ -75,10 +75,10 @@ export class PasswordResetMailService {
                   <tr>
                     <td style="padding:32px;">
                       <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">
-                        Recibimos una solicitud para cambiar la contrasena de tu cuenta.
+                        Recibimos una solicitud para cambiar la contraseña de tu cuenta.
                       </p>
                       <p style="margin:0 0 24px; font-size:16px; line-height:1.6;">
-                        Haz clic en el siguiente boton para crear una nueva contrasena. Por seguridad, este enlace expira en 1 hora.
+                        Haz clic en el siguiente boton para crear una nueva contraseña. Por seguridad, este enlace expira en 1 hora.
                       </p>
                       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
                         <tr>

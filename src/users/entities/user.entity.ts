@@ -1,12 +1,14 @@
 import { Curso } from 'src/cursos/entities/curso.entity';
 import { Estudiante } from 'src/estudiantes/entities/estudiante.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
+import { ReservaAuditorio } from 'src/auditorios/entities/reserva-auditorio.entity';
 import { Role } from 'src/roles/entities/role.entity';
 import {
   Column,
   Entity,
   JoinTable,
   ManyToMany,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -69,4 +71,7 @@ export class User {
 
   @OneToOne(() => Estudiante, (estudiante) => estudiante.user)
   estudiante: Estudiante;
+
+  @OneToMany(() => ReservaAuditorio, (reserva) => reserva.usuario)
+  reservasAuditorio: ReservaAuditorio[];
 }

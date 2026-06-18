@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
@@ -10,258 +14,288 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
+  private readonly defaultPhoto = 'default.jpg';
 
-    constructor(
-        @InjectRepository(User)
-        private userRepo: Repository<User>,
+  constructor(
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
 
-        @InjectRepository(Materia)
-        private materiaRepo: Repository<Materia>,
+    @InjectRepository(Materia)
+    private materiaRepo: Repository<Materia>,
 
-        // @InjectRepository(Curso)
-        // private cursoRepo: Repository<Curso>, // 🔥 necesario
+    // @InjectRepository(Curso)
+    // private cursoRepo: Repository<Curso>, // 🔥 necesario
 
-        private rolesService: RolesService,
-    ) {}
+    private rolesService: RolesService,
+  ) {}
 
-    // =========================
-    // LISTAR
-    // =========================
-    async findAll() {
-        return await this.userRepo.find({
-            relations: ['roles', 'cursos', 'materias'],
-        });
+  // =========================
+  // LISTAR
+  // =========================
+  async findAll() {
+    return await this.userRepo.find({
+      relations: ['roles', 'cursos', 'materias'],
+    });
+  }
+
+  // =========================
+  // BUSCAR POR EMAIL
+  // =========================
+  async findByEmail(email: string) {
+    const user = await this.userRepo.findOne({
+      where: { email },
+      relations: {
+        roles: {
+          modules: true,
+        },
+        cursos: true,
+        materias: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User ${email} not found`);
     }
 
-    // =========================
-    // BUSCAR POR EMAIL
-    // =========================
-    async findByEmail(email: string) {
-        const user = await this.userRepo.findOne({
-            where: { email },
-            relations: {
-                roles: {
-                    modules: true,
-                },
-                cursos: true,
-                materias: true,
-            },
-        });
+    return user;
+  }
 
-        if (!user) {
-            throw new NotFoundException(`User ${email} not found`);
-        }
+  async findOneByEmail(email: string) {
+    return await this.userRepo.findOne({
+      where: { email },
+    });
+  }
 
-        return user;
+  async savePasswordResetToken(
+    userId: number,
+    resetPasswordToken: string,
+    resetPasswordTokenExpires: Date,
+  ) {
+    await this.userRepo.update(userId, {
+      resetPasswordToken,
+      resetPasswordTokenExpires,
+    });
+  }
+
+  async findByPasswordResetToken(resetPasswordToken: string) {
+    return await this.userRepo.findOne({
+      where: { resetPasswordToken },
+    });
+  }
+
+  async clearPasswordResetToken(userId: number) {
+    await this.userRepo.update(userId, {
+      resetPasswordToken: null,
+      resetPasswordTokenExpires: null,
+    });
+  }
+
+  async updatePasswordAndClearResetToken(user: User, password: string) {
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordTokenExpires = null;
+
+    return await this.userRepo.save(user);
+  }
+
+  // =========================
+  // BUSCAR UNO
+  // =========================
+  async findOne(userId: number) {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      relations: ['roles', 'cursos', 'materias'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User #${userId} not found`);
     }
 
-    async findOneByEmail(email: string) {
-        return await this.userRepo.findOne({
-            where: { email },
-        });
+    return user;
+  }
+
+  // =========================
+  // CREAR USUARIO
+  // =========================
+  async create(createUserDto: CreateUserDto) {
+    const { roleIds, materiaIds, password, ...userData } = createUserDto;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const roles = await this.rolesService.findByIds(roleIds);
+
+    if (roles.length !== roleIds.length) {
+      throw new NotFoundException('Some roles were not found');
     }
 
-    async savePasswordResetToken(
-        userId: number,
-        resetPasswordToken: string,
-        resetPasswordTokenExpires: Date,
-    ) {
-        await this.userRepo.update(userId, {
-            resetPasswordToken,
-            resetPasswordTokenExpires,
-        });
+    const newUser = this.userRepo.create({
+      ...userData,
+      photo: this.normalizePhoto(userData.photo),
+      password: hashedPassword,
+      roles,
+    });
+
+    const savedUser = await this.userRepo.save(newUser);
+
+    if (materiaIds) {
+      await this.asignarMateriasADocente(savedUser, materiaIds);
     }
 
-    async findByPasswordResetToken(resetPasswordToken: string) {
-        return await this.userRepo.findOne({
-            where: { resetPasswordToken },
-        });
+    return await this.findOne(savedUser.id);
+  }
+
+  // =========================
+  // ACTUALIZAR USUARIO
+  // =========================
+  async updateUser(id: number, updateUserDto: UpdateUserDto) {
+    const { roleIds, materiaIds, password, photo, ...userData } = updateUserDto;
+
+    const user = await this.userRepo.findOne({
+      where: { id },
+      relations: ['roles', 'materias'],
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    // roles
+    if (roleIds) {
+      const roles = await this.rolesService.findByIds(roleIds);
+
+      if (roles.length !== roleIds.length) {
+        throw new NotFoundException('Some roles were not found');
+      }
+
+      user.roles = roles;
     }
 
-    async clearPasswordResetToken(userId: number) {
-        await this.userRepo.update(userId, {
-            resetPasswordToken: null,
-            resetPasswordTokenExpires: null,
-        });
+    // password
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
     }
 
-    async updatePasswordAndClearResetToken(user: User, password: string) {
-        user.password = await bcrypt.hash(password, 10);
-        user.resetPasswordToken = null;
-        user.resetPasswordTokenExpires = null;
+    this.userRepo.merge(user, {
+      ...userData,
+      ...(Object.prototype.hasOwnProperty.call(updateUserDto, 'photo')
+        ? { photo: this.normalizePhoto(photo) }
+        : {}),
+    });
 
-        return await this.userRepo.save(user);
+    const savedUser = await this.userRepo.save(user);
+
+    if (materiaIds) {
+      await this.asignarMateriasADocente(savedUser, materiaIds);
     }
 
-    // =========================
-    // BUSCAR UNO
-    // =========================
-    async findOne(userId: number) {
-        const user = await this.userRepo.findOne({
-            where: { id: userId },
-            relations: ['roles', 'cursos', 'materias'],
-        });
+    return await this.findOne(savedUser.id);
+  }
 
-        if (!user) {
-            throw new NotFoundException(`User #${userId} not found`);
-        }
+  async updatePhoto(id: number, photo: string) {
+    const user = await this.userRepo.findOne({
+      where: { id },
+    });
 
-        return user;
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    // =========================
-    // CREAR USUARIO
-    // =========================
-    async create(createUserDto: CreateUserDto) {
-        const { roleIds, materiaIds, password, ...userData } = createUserDto;
+    user.photo = this.normalizePhoto(photo);
+    const savedUser = await this.userRepo.save(user);
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+    return await this.findOne(savedUser.id);
+  }
 
-        const roles = await this.rolesService.findByIds(roleIds);
+  private async asignarMateriasADocente(user: User, materiaIds: number[]) {
+    const esDocente = user.roles?.some(
+      (role) => role.name?.toUpperCase() === 'DOCENTE',
+    );
 
-        if (roles.length !== roleIds.length) {
-            throw new NotFoundException('Some roles were not found');
-        }
-
-        const newUser = this.userRepo.create({
-            ...userData,
-            password: hashedPassword,
-            roles,
-        });
-
-        const savedUser = await this.userRepo.save(newUser);
-
-        if (materiaIds) {
-            await this.asignarMateriasADocente(savedUser, materiaIds);
-        }
-
-        return await this.findOne(savedUser.id);
+    if (!esDocente) {
+      throw new BadRequestException(
+        'Solo se pueden asignar materias a usuarios con rol DOCENTE',
+      );
     }
 
-    // =========================
-    // ACTUALIZAR USUARIO
-    // =========================
-    async updateUser(id: number, updateUserDto: UpdateUserDto) {
-        const { roleIds, materiaIds, password, ...userData } = updateUserDto;
+    const materias = await this.materiaRepo.find({
+      where: { idMateria: In(materiaIds) },
+    });
 
-        const user = await this.userRepo.findOne({
-            where: { id },
-            relations: ['roles', 'materias'],
-        });
-
-        if (!user) throw new NotFoundException('User not found');
-
-        // roles
-        if (roleIds) {
-            const roles = await this.rolesService.findByIds(roleIds);
-
-            if (roles.length !== roleIds.length) {
-                throw new NotFoundException('Some roles were not found');
-            }
-
-            user.roles = roles;
-        }
-
-        // password
-        if (password) {
-            user.password = await bcrypt.hash(password, 10);
-        }
-
-        this.userRepo.merge(user, userData);
-
-        const savedUser = await this.userRepo.save(user);
-
-        if (materiaIds) {
-            await this.asignarMateriasADocente(savedUser, materiaIds);
-        }
-
-        return await this.findOne(savedUser.id);
+    if (materias.length !== materiaIds.length) {
+      throw new NotFoundException('Una o varias materias no existen');
     }
 
-    private async asignarMateriasADocente(user: User, materiaIds: number[]) {
-        const esDocente = user.roles?.some(
-            (role) => role.name?.toUpperCase() === 'DOCENTE',
-        );
+    user.materias = materias;
+    await this.userRepo.save(user);
+  }
 
-        if (!esDocente) {
-            throw new BadRequestException(
-                'Solo se pueden asignar materias a usuarios con rol DOCENTE',
-            );
-        }
-
-        const materias = await this.materiaRepo.find({
-            where: { idMateria: In(materiaIds) },
-        });
-
-        if (materias.length !== materiaIds.length) {
-            throw new NotFoundException('Una o varias materias no existen');
-        }
-
-        user.materias = materias;
-        await this.userRepo.save(user);
+  private normalizePhoto(photo?: string | null): string {
+    if (!photo || photo.trim() === '') {
+      return this.defaultPhoto;
     }
 
-    // // =========================
-    // // ASIGNAR CURSO 🔥🔥🔥
-    // // =========================
-    // async asignarCurso(userId: number, cursoId: number) {
+    return photo.trim();
+  }
 
-    //     const user = await this.userRepo.findOne({
-    //         where: { id: userId },
-    //         relations: ['roles', 'cursos'],
-    //     });
+  // // =========================
+  // // ASIGNAR CURSO 🔥🔥🔥
+  // // =========================
+  // async asignarCurso(userId: number, cursoId: number) {
 
-    //     if (!user) {
-    //         throw new NotFoundException('Usuario no encontrado');
-    //     }
+  //     const user = await this.userRepo.findOne({
+  //         where: { id: userId },
+  //         relations: ['roles', 'cursos'],
+  //     });
 
-    //     const curso = await this.cursoRepo.findOne({
-    //         where: { id: cursoId, isActive: true },
-    //     });
+  //     if (!user) {
+  //         throw new NotFoundException('Usuario no encontrado');
+  //     }
 
-    //     if (!curso) {
-    //         throw new NotFoundException('Curso no encontrado o inactivo');
-    //     }
+  //     const curso = await this.cursoRepo.findOne({
+  //         where: { id: cursoId, isActive: true },
+  //     });
 
-    //     const esEstudiante = user.roles.some(r => r.name === 'ESTUDIANTE');
-    //     const esDocente = user.roles.some(r => r.name === 'DOCENTE');
+  //     if (!curso) {
+  //         throw new NotFoundException('Curso no encontrado o inactivo');
+  //     }
 
-    //     //ESTUDIANTE → SOLO 1 CURSO
-    //     if (esEstudiante) {
+  //     const esEstudiante = user.roles.some(r => r.name === 'ESTUDIANTE');
+  //     const esDocente = user.roles.some(r => r.name === 'DOCENTE');
 
-    //         if (user.cursos && user.cursos.length > 0) {
-    //             throw new BadRequestException(
-    //                 'El estudiante ya tiene un curso asignado'
-    //             );
-    //         }
+  //     //ESTUDIANTE → SOLO 1 CURSO
+  //     if (esEstudiante) {
 
-    //         user.cursos = [curso];
-    //     }
+  //         if (user.cursos && user.cursos.length > 0) {
+  //             throw new BadRequestException(
+  //                 'El estudiante ya tiene un curso asignado'
+  //             );
+  //         }
 
-    //     //El docente va a tener varios cursos
-    //     else if (esDocente) {
+  //         user.cursos = [curso];
+  //     }
 
-    //         const yaExiste = user.cursos?.some(c => c.id === cursoId);
+  //     //El docente va a tener varios cursos
+  //     else if (esDocente) {
 
-    //         if (yaExiste) {
-    //             throw new BadRequestException(
-    //                 'El docente ya tiene este curso asignado'
-    //             );
-    //         }
+  //         const yaExiste = user.cursos?.some(c => c.id === cursoId);
 
-    //         user.cursos = [...(user.cursos || []), curso];
-    //     }
+  //         if (yaExiste) {
+  //             throw new BadRequestException(
+  //                 'El docente ya tiene este curso asignado'
+  //             );
+  //         }
 
-    //     else {
-    //         throw new BadRequestException('El usuario no tiene rol válido');
-    //     }
+  //         user.cursos = [...(user.cursos || []), curso];
+  //     }
 
-    //     return await this.userRepo.save(user);
-    // }
+  //     else {
+  //         throw new BadRequestException('El usuario no tiene rol válido');
+  //     }
 
-    // ELIMINAR
-    async deleteUser(idUser: number) {
-        const user = await this.findOne(idUser);
-        return await this.userRepo.remove(user);
-    }
+  //     return await this.userRepo.save(user);
+  // }
+
+  // ELIMINAR
+  async deleteUser(idUser: number) {
+    const user = await this.findOne(idUser);
+    return await this.userRepo.remove(user);
+  }
 }
