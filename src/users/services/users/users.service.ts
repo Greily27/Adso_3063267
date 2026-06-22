@@ -11,10 +11,14 @@ import { RolesService } from 'src/roles/services/roles.service';
 import { Curso } from 'src/cursos/entities/curso.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+import { mkdir, writeFile } from 'fs/promises';
+import { join } from 'path';
 
 @Injectable()
 export class UsersService {
   private readonly defaultPhoto = 'default.jpg';
+  private readonly maxPhotoSize = 2 * 1024 * 1024;
 
   constructor(
     @InjectRepository(User)
@@ -130,7 +134,7 @@ export class UsersService {
 
     const newUser = this.userRepo.create({
       ...userData,
-      photo: this.normalizePhoto(userData.photo),
+      photo: await this.resolvePhoto(userData.photo),
       password: hashedPassword,
       roles,
     });
@@ -176,7 +180,7 @@ export class UsersService {
     this.userRepo.merge(user, {
       ...userData,
       ...(Object.prototype.hasOwnProperty.call(updateUserDto, 'photo')
-        ? { photo: this.normalizePhoto(photo) }
+        ? { photo: await this.resolvePhoto(photo) }
         : {}),
     });
 
@@ -198,7 +202,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    user.photo = this.normalizePhoto(photo);
+    user.photo = await this.resolvePhoto(photo);
     const savedUser = await this.userRepo.save(user);
 
     return await this.findOne(savedUser.id);
@@ -227,12 +231,45 @@ export class UsersService {
     await this.userRepo.save(user);
   }
 
-  private normalizePhoto(photo?: string | null): string {
+  private async resolvePhoto(photo?: string | null): Promise<string> {
     if (!photo || photo.trim() === '') {
       return this.defaultPhoto;
     }
 
-    return photo.trim();
+    const trimmedPhoto = photo.trim();
+
+    if (!trimmedPhoto.startsWith('data:image/')) {
+      return trimmedPhoto;
+    }
+
+    return await this.saveBase64Photo(trimmedPhoto);
+  }
+
+  private async saveBase64Photo(photo: string): Promise<string> {
+    const match = photo.match(
+      /^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\r\n]+)$/,
+    );
+
+    if (!match) {
+      throw new BadRequestException(
+        'La foto debe ser una imagen JPG, PNG o WEBP valida',
+      );
+    }
+
+    const extension = match[1] === 'jpeg' ? 'jpg' : match[1];
+    const buffer = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+
+    if (buffer.length > this.maxPhotoSize) {
+      throw new BadRequestException('La foto no puede superar 2 MB');
+    }
+
+    const uploadDir = join(process.cwd(), 'uploads', 'users');
+    await mkdir(uploadDir, { recursive: true });
+
+    const filename = `${Date.now()}-${randomUUID()}.${extension}`;
+    await writeFile(join(uploadDir, filename), buffer);
+
+    return `users/${filename}`;
   }
 
   // // =========================

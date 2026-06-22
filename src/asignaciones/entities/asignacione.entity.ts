@@ -1,4 +1,5 @@
 import { Curso } from 'src/cursos/entities/curso.entity';
+import { Guia } from 'src/guias/entities/guia.entity';
 import { Horario } from 'src/horarios/entities/horario.entity';
 import { Materia } from 'src/materias/entities/materia.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -41,4 +42,7 @@ export class Asignacion {
 
   @OneToMany(() => Horario, (horario) => horario.asignacion)
   horarios: Horario[];
+
+  @OneToMany(() => Guia, (guia) => guia.asignacion)
+  guias: Guia[];
 }
