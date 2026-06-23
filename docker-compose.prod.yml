@@ -36,6 +36,6 @@ services:
       PGADMIN_DEFAULT_EMAIL: root@admin.com
       PGADMIN_DEFAULT_PASSWORD: root
     ports: 
-      - "5052:80"
+      - "5053:80"
 volumes:
   postgres_prod_data:
