@@ -55,6 +55,8 @@ export class AuthService {
     }
 
     async forgotPassword(email: string) {
+        this.logger.log(`Solicitud de recuperacion recibida para email: ${email}`);
+
         const user = await this.usersService.findOneByEmail(email);
 
         if (user) {
