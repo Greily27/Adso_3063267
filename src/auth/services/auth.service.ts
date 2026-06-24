@@ -3,6 +3,7 @@ import {
     Injectable,
     Logger,
     UnauthorizedException,
+    Inject,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from 'src/users/entities/user.entity';
@@ -11,18 +12,21 @@ import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { UserModel } from '../../users/interfaces/user';
 import { PasswordResetMailService } from './password-reset-mail.service';
+import type { ConfigType } from '@nestjs/config';
+import config from '../../config';
 
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
     private readonly forgotPasswordMessage = 'Si el correo existe, se enviara un enlace de recuperacion.';
-    private readonly resetPasswordBaseUrl = 'http://localhost:4200/auth/reset-password';
     private readonly resetPasswordTokenExpiresInMs = 60 * 60 * 1000;
 
     constructor(
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly passwordResetMailService: PasswordResetMailService,
+        @Inject(config.KEY)
+        private readonly configService: ConfigType<typeof config>,
         // @InjectRepository(User) private userRepo: Repository<User>
     ) { }
 
@@ -62,13 +66,18 @@ export class AuthService {
             try {
                 await this.passwordResetMailService.sendPasswordResetEmail(
                     user.email,
-                    `${this.resetPasswordBaseUrl}/${token}`,
+                    `${this.configService.auth.resetPasswordBaseUrl}/${token}`,
                 );
             } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
                 this.logger.error(
-                    `No se pudo enviar el correo de recuperacion: ${error.message}`,
+                    `No se pudo enviar el correo de recuperacion: ${message}`,
                 );
             }
+        } else {
+            this.logger.warn(
+                `No se envio correo de recuperacion porque no existe usuario con email: ${email}`,
+            );
         }
 
         return {

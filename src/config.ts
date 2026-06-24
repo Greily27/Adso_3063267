@@ -26,5 +26,10 @@ export default registerAs('config', () => {
             password: process.env.MAIL_PASSWORD,
             from: process.env.MAIL_FROM || process.env.MAIL_USER,
         },
+        auth: {
+            resetPasswordBaseUrl:
+                process.env.RESET_PASSWORD_BASE_URL ||
+                'http://localhost:4200/auth/reset-password',
+        },
     }
 });

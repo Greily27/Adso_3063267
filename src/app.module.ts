@@ -44,6 +44,7 @@ import config from './config';
         MAIL_USER: Joi.string().optional(),
         MAIL_PASSWORD: Joi.string().optional(),
         MAIL_FROM: Joi.string().optional(),
+        RESET_PASSWORD_BASE_URL: Joi.string().uri().optional(),
       }),
     }),
     DatabaseModule,
