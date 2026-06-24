@@ -39,13 +39,17 @@ export class PasswordResetMailService {
       },
     });
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from,
       to: email,
       subject: 'Recuperacion de contrasena',
       text: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
       html: this.buildPasswordResetEmailHtml(resetUrl),
     });
+
+    this.logger.log(
+      `Correo de recuperacion enviado a ${email}. Message ID: ${info.messageId}`,
+    );
   }
 
   private buildPasswordResetEmailHtml(resetUrl: string): string {
