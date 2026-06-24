@@ -24,7 +24,7 @@ export class PasswordResetMailService {
       this.isPlaceholderSmtpConfig(user, password)
     ) {
       this.logger.error(
-        `No se envio el correo de recuperacion porque falta configuracion SMTP. Enlace generado: ${resetUrl}`,
+        'No se envio el correo de recuperacion porque falta configuracion SMTP.',
       );
       throw new Error('SMTP configuration is incomplete');
     }
