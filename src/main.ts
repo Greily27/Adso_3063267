@@ -5,11 +5,18 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import * as express from 'express';
 
+function getCorsOrigins(): string[] {
+  return (process.env.CORS_ORIGINS || 'https://colplinista-frontend.onrender.com')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.enableCors({
-    origin: ['https://colplinista-frontend.onrender.com'],
+    origin: getCorsOrigins(),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
