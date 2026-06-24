@@ -10,7 +10,13 @@ async function bootstrap() {
   app.enableCors({
     origin: ['https://colplinista-frontend.onrender.com'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Cache-Control',
+      'Pragma',
+      'Expires',
+    ],
     credentials: true,
   });
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
