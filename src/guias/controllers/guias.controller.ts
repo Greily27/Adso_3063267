@@ -81,8 +81,10 @@ export class GuiasController {
 
   @Get()
   @ApiOperation({ summary: 'Listar guias' })
-  findAll() {
-    return this.guiasService.findAll();
+  async findAll(@Req() req) {
+    const guias = await this.guiasService.findAll();
+
+    return guias.map((guia) => this.withPublicArchivoUrl(req, guia));
   }
 
   @Post()
@@ -170,5 +172,21 @@ export class GuiasController {
 
   private buildArchivoUrl(req, filename: string): string {
     return `${req.protocol}://${req.get('host')}/uploads/guias/${encodeURIComponent(filename)}`;
+  }
+
+  private withPublicArchivoUrl(req, guia) {
+    const marker = '/uploads/guias/';
+    const markerIndex = guia.archivoUrl?.indexOf(marker) ?? -1;
+
+    if (markerIndex === -1) {
+      return guia;
+    }
+
+    const filename = guia.archivoUrl.slice(markerIndex + marker.length);
+
+    return {
+      ...guia,
+      archivoUrl: this.buildArchivoUrl(req, decodeURIComponent(filename)),
+    };
   }
 }
