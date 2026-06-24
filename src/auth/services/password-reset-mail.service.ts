@@ -48,7 +48,7 @@ export class PasswordResetMailService {
     });
 
     this.logger.log(
-      `Correo de recuperacion enviado a ${email}. Message ID: ${info.messageId}`,
+      `Correo de recuperacion procesado para ${email}. Accepted: ${info.accepted?.join(', ') || 'ninguno'}. Rejected: ${info.rejected?.join(', ') || 'ninguno'}. Response: ${info.response}. Message ID: ${info.messageId}`,
     );
   }
 
