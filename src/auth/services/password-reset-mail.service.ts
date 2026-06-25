@@ -13,8 +13,18 @@ export class PasswordResetMailService {
   ) {}
 
   async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
-    const { host, port, secure, user, password, from } =
+    const { host, port, secure, user, password, from, brevoApiKey } =
       this.configService.mail;
+
+    if (brevoApiKey) {
+      await this.sendPasswordResetEmailWithBrevoApi(
+        brevoApiKey,
+        from,
+        email,
+        resetUrl,
+      );
+      return;
+    }
 
     if (
       !host ||
@@ -64,6 +74,56 @@ export class PasswordResetMailService {
       );
       throw error;
     }
+  }
+
+  private async sendPasswordResetEmailWithBrevoApi(
+    apiKey: string,
+    from: string | undefined,
+    email: string,
+    resetUrl: string,
+  ): Promise<void> {
+    if (!from) {
+      this.logger.error(
+        'No se envio el correo de recuperacion porque falta MAIL_FROM.',
+      );
+      throw new Error('MAIL_FROM is required');
+    }
+
+    this.logger.log(
+      `Intentando enviar correo de recuperacion por Brevo API. From: ${from}. To: ${email}`,
+    );
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          email: from,
+          name: 'Colegio Plinista',
+        },
+        to: [{ email }],
+        subject: 'Recuperacion de contrasena',
+        textContent: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
+        htmlContent: this.buildPasswordResetEmailHtml(resetUrl),
+      }),
+    });
+
+    const responseBody = await response.text();
+
+    if (!response.ok) {
+      this.logger.error(
+        `Fallo Brevo API al enviar recuperacion a ${email}. Status: ${response.status}. Response: ${responseBody}`,
+      );
+      throw new Error(`Brevo API request failed with status ${response.status}`);
+    }
+
+    this.logger.log(
+      `Correo de recuperacion procesado por Brevo API para ${email}. Response: ${responseBody}`,
+    );
   }
 
   private getMailErrorDetails(error: unknown): string {

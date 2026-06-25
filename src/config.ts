@@ -25,6 +25,7 @@ export default registerAs('config', () => {
             user: process.env.MAIL_USER,
             password: process.env.MAIL_PASSWORD,
             from: process.env.MAIL_FROM || process.env.MAIL_USER,
+            brevoApiKey: process.env.BREVO_API_KEY,
         },
         auth: {
             resetPasswordBaseUrl:
