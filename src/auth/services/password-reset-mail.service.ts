@@ -33,6 +33,9 @@ export class PasswordResetMailService {
       host,
       port,
       secure,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
       auth: {
         user,
         pass: password,
