@@ -55,16 +55,27 @@ export class AuthService {
     }
 
     async forgotPassword(email: string) {
-        this.logger.log(`Solicitud de recuperacion recibida para email: ${email}`);
+        const normalizedEmail = email.trim().toLowerCase();
+        this.logger.log(
+            `Solicitud de recuperacion recibida para email: ${normalizedEmail}`,
+        );
 
-        const user = await this.usersService.findOneByEmail(email);
+        const user = await this.usersService.findOneByEmail(normalizedEmail);
 
         if (user) {
+            this.logger.log(
+                `Usuario encontrado para recuperacion de contrasena. User ID: ${user.id}`,
+            );
+
             const token = randomBytes(32).toString('hex');
             const tokenHash = this.hashPasswordResetToken(token);
             const expiresAt = new Date(Date.now() + this.resetPasswordTokenExpiresInMs);
 
             await this.usersService.savePasswordResetToken(user.id, tokenHash, expiresAt);
+            this.logger.log(
+                `Token de recuperacion guardado. User ID: ${user.id}. Expira: ${expiresAt.toISOString()}`,
+            );
+
             try {
                 await this.passwordResetMailService.sendPasswordResetEmail(
                     user.email,
@@ -78,7 +89,7 @@ export class AuthService {
             }
         } else {
             this.logger.warn(
-                `No se envio correo de recuperacion porque no existe usuario con email: ${email}`,
+                `No se envio correo de recuperacion porque no existe usuario con email: ${normalizedEmail}`,
             );
         }
 

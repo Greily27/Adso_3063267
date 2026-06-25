@@ -39,17 +39,51 @@ export class PasswordResetMailService {
       },
     });
 
-    const info = await transporter.sendMail({
-      from,
-      to: email,
-      subject: 'Recuperacion de contrasena',
-      text: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
-      html: this.buildPasswordResetEmailHtml(resetUrl),
-    });
-
     this.logger.log(
-      `Correo de recuperacion procesado para ${email}. Accepted: ${info.accepted?.join(', ') || 'ninguno'}. Rejected: ${info.rejected?.join(', ') || 'ninguno'}. Response: ${info.response}. Message ID: ${info.messageId}`,
+      `Intentando enviar correo de recuperacion. SMTP: ${host}:${port}. Secure: ${secure}. From: ${from}. To: ${email}`,
     );
+
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to: email,
+        subject: 'Recuperacion de contrasena',
+        text: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
+        html: this.buildPasswordResetEmailHtml(resetUrl),
+      });
+
+      this.logger.log(
+        `Correo de recuperacion procesado para ${email}. Accepted: ${info.accepted?.join(', ') || 'ninguno'}. Rejected: ${info.rejected?.join(', ') || 'ninguno'}. Response: ${info.response}. Message ID: ${info.messageId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Fallo SMTP al enviar recuperacion a ${email}. ${this.getMailErrorDetails(error)}`,
+      );
+      throw error;
+    }
+  }
+
+  private getMailErrorDetails(error: unknown): string {
+    if (!(error instanceof Error)) {
+      return String(error);
+    }
+
+    const details = error as Error & {
+      code?: string;
+      command?: string;
+      response?: string;
+      responseCode?: number;
+    };
+
+    return [
+      `message=${details.message}`,
+      details.code ? `code=${details.code}` : undefined,
+      details.command ? `command=${details.command}` : undefined,
+      details.responseCode ? `responseCode=${details.responseCode}` : undefined,
+      details.response ? `response=${details.response}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(' ');
   }
 
   private buildPasswordResetEmailHtml(resetUrl: string): string {
