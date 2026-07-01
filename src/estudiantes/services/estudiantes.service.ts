@@ -9,9 +9,13 @@ import {
   UpdateEstudianteDto,
 } from '../dto/estudiante.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Estudiante } from '../entities/estudiante.entity';
+import { Role } from 'src/roles/entities/role.entity';
+import { AuthService } from 'src/auth/services/auth.service';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EstudiantesService {
@@ -24,36 +28,70 @@ export class EstudiantesService {
 
     @InjectRepository(Curso)
     private readonly cursoRepository: Repository<Curso>,
+
+    private readonly dataSource: DataSource,
+    private readonly authService: AuthService,
   ) {}
 
   //CREAR
   async create(dto: CreateEstudianteDto) {
-    const { userId, cursoId, acudienteUserIds, ...data } = dto;
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['estudiante'],
+    const result = await this.dataSource.transaction(async (manager) => {
+      const { userId, cursoId, acudienteUserIds, ...data } = dto;
+      const user = await manager.findOne(User, {
+        where: { id: userId },
+        relations: ['estudiante'],
+      });
+      if (!user) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+      if (user.estudiante) {
+        throw new BadRequestException('El usuario ya es estudiante');
+      }
+
+      const curso = await manager.findOne(Curso, {
+        where: { id: cursoId },
+      });
+      if (!curso) {
+        throw new NotFoundException('Curso no encontrado');
+      }
+
+      const acudienteAutomatico = await this.findOrCreateAcudiente(
+        manager,
+        dto,
+      );
+      const acudientesAdicionales = await this.findAcudientesWithManager(
+        manager,
+        acudienteUserIds,
+      );
+      const acudientes = [
+        acudienteAutomatico.user,
+        ...acudientesAdicionales,
+      ].filter(
+        (acudiente, index, values) =>
+          values.findIndex((item) => item.id === acudiente.id) === index,
+      );
+
+      const estudiante = manager.create(Estudiante, {
+        ...data,
+        user,
+        curso,
+        acudientes,
+      });
+      const saved = await manager.save(Estudiante, estudiante);
+
+      return {
+        estudiante: saved,
+        nuevoAcudienteEmail: acudienteAutomatico.created
+          ? acudienteAutomatico.user.email
+          : null,
+      };
     });
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+
+    if (result.nuevoAcudienteEmail) {
+      await this.authService.forgotPassword(result.nuevoAcudienteEmail);
     }
-    if (user.estudiante) {
-      throw new BadRequestException('El usuario ya es estudiante');
-    }
-    const curso = await this.cursoRepository.findOne({
-      where: { id: cursoId },
-    });
-    if (!curso) {
-      throw new NotFoundException('Curso no encontrado');
-    }
-    const estudiante = this.estudianteRepository.create({
-      ...data,
-      user,
-      curso,
-      acudientes: await this.findAcudientes(acudienteUserIds),
-    });
-    return this.toSafeResponse(
-      await this.estudianteRepository.save(estudiante),
-    );
+
+    return this.toSafeResponse(result.estudiante);
   }
 
   //LISTAR
@@ -160,6 +198,107 @@ export class EstudiantesService {
       );
     }
 
+    return acudientes;
+  }
+
+  private async findOrCreateAcudiente(
+    manager: EntityManager,
+    dto: CreateEstudianteDto,
+  ): Promise<{ user: User; created: boolean }> {
+    const documento = dto.documentoTutor.trim();
+    const email = dto.emailTutor.trim().toLowerCase();
+    const role = await manager.findOne(Role, {
+      where: { name: 'ACUDIENTE' },
+    });
+
+    if (!role) {
+      throw new NotFoundException(
+        'No existe el rol ACUDIENTE. Ejecute la migración pendiente',
+      );
+    }
+
+    const [porDocumento, porEmail] = await Promise.all([
+      manager.findOne(User, {
+        where: { document: documento },
+        relations: ['roles'],
+      }),
+      manager.findOne(User, {
+        where: { email },
+        relations: ['roles'],
+      }),
+    ]);
+
+    if (porDocumento && porEmail && porDocumento.id !== porEmail.id) {
+      throw new BadRequestException(
+        'El documento y el correo del acudiente pertenecen a usuarios diferentes',
+      );
+    }
+
+    if (porEmail && porEmail.document !== documento) {
+      throw new BadRequestException(
+        'El correo del acudiente ya pertenece a otro documento',
+      );
+    }
+
+    const existente = porDocumento ?? porEmail;
+    if (existente) {
+      const tieneRol = existente.roles?.some(
+        (item) => String(item.name).trim().toUpperCase() === 'ACUDIENTE',
+      );
+      if (!tieneRol) {
+        existente.roles = [...(existente.roles ?? []), role];
+        await manager.save(User, existente);
+      }
+      return { user: existente, created: false };
+    }
+
+    const passwordTemporal = randomBytes(32).toString('hex');
+    const nuevo = manager.create(User, {
+      names: dto.nombreTutor.trim(),
+      lastNames: dto.apellidoTutor.trim(),
+      phone: dto.telefonoTutor.trim(),
+      address: 'Pendiente por registrar',
+      docType: dto.tipoDocTutor.trim(),
+      document: documento,
+      photo: 'default.jpg',
+      password: await bcrypt.hash(passwordTemporal, 10),
+      email,
+      isActive: true,
+      roles: [role],
+    });
+
+    return {
+      user: await manager.save(User, nuevo),
+      created: true,
+    };
+  }
+
+  private async findAcudientesWithManager(
+    manager: EntityManager,
+    ids?: number[],
+  ): Promise<User[]> {
+    if (!ids?.length) return [];
+
+    const uniqueIds = [...new Set(ids)];
+    const acudientes = await manager.find(User, {
+      where: { id: In(uniqueIds) },
+      relations: ['roles'],
+    });
+    if (acudientes.length !== uniqueIds.length) {
+      throw new NotFoundException('Uno o varios acudientes no existen');
+    }
+
+    const invalido = acudientes.find(
+      (acudiente) =>
+        !acudiente.roles?.some(
+          (role) => String(role.name).trim().toUpperCase() === 'ACUDIENTE',
+        ),
+    );
+    if (invalido) {
+      throw new BadRequestException(
+        `El usuario ${invalido.id} no tiene el rol ACUDIENTE`,
+      );
+    }
     return acudientes;
   }
 
