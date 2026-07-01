@@ -1,11 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsNumber,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsDateString, IsNumber, IsString, MaxLength } from 'class-validator';
 
 export class CreateObservadorDto {
   @Type(() => Number)

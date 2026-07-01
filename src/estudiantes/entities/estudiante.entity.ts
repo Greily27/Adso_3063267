@@ -4,6 +4,8 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -38,6 +40,14 @@ export class Estudiante {
   @OneToOne(() => User, (user) => user.estudiante)
   @JoinColumn()
   user: User;
+
+  @ManyToMany(() => User, (user) => user.acudidos)
+  @JoinTable({
+    name: 'acudiente_estudiantes',
+    joinColumn: { name: 'estudiante_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'acudiente_id', referencedColumnName: 'id' },
+  })
+  acudientes: User[];
 
   @ManyToOne(() => Curso, (curso) => curso.estudiantes, {
     nullable: false,

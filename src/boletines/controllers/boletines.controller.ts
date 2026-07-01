@@ -18,10 +18,7 @@ import { createReadStream, existsSync } from 'fs';
 import { extname, resolve } from 'path';
 
 import { JwtAuthGuard } from '../../auth/guards/auth.guard';
-import {
-  GenerarBoletinesDto,
-  PublicarBoletinesDto,
-} from '../dto/boletin.dto';
+import { GenerarBoletinesDto, PublicarBoletinesDto } from '../dto/boletin.dto';
 import { BoletinesService } from '../services/boletines.service';
 
 @ApiTags('Boletines')
@@ -37,6 +34,43 @@ export class BoletinesController {
     return this.boletinesService.findMine(req.user);
   }
 
+  @Get('acudidos')
+  @ApiOperation({ summary: 'Listar boletines de estudiantes asociados' })
+  findAcudidos(@Req() req) {
+    return this.boletinesService.findAcudidos(req.user);
+  }
+
+  @Get('acudidos/:estudianteId/periodos/:periodoId')
+  @ApiOperation({ summary: 'Consultar boletín de un estudiante asociado' })
+  findAcudidoByPeriodo(
+    @Req() req,
+    @Param('estudianteId', ParseIntPipe) estudianteId: number,
+    @Param('periodoId', ParseIntPipe) periodoId: number,
+  ) {
+    return this.boletinesService.findAcudidoByPeriodo(
+      req.user,
+      estudianteId,
+      periodoId,
+    );
+  }
+
+  @Get('acudidos/:estudianteId/:id/download')
+  @Header('Content-Type', 'application/octet-stream')
+  @ApiOperation({ summary: 'Descargar boletín de un estudiante asociado' })
+  async downloadAcudido(
+    @Req() req,
+    @Res() res: Response,
+    @Param('estudianteId', ParseIntPipe) estudianteId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const boletin = await this.boletinesService.findAcudidoForDownload(
+      req.user,
+      estudianteId,
+      id,
+    );
+    return this.sendBoletin(res, boletin);
+  }
+
   @Get('me/:id/download')
   @Header('Content-Type', 'application/octet-stream')
   @ApiOperation({ summary: 'Descargar boletin propio publicado' })
@@ -49,6 +83,10 @@ export class BoletinesController {
       req.user,
       id,
     );
+    return this.sendBoletin(res, boletin);
+  }
+
+  private sendBoletin(res: Response, boletin) {
     const archivo = boletin.rutaArchivo ?? boletin.archivoUrl;
 
     if (!archivo) {

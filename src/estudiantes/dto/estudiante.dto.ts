@@ -1,5 +1,12 @@
-import { IsString, IsNotEmpty, IsEmail, IsInt } from 'class-validator';
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsEmail,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateEstudianteDto {
@@ -47,6 +54,16 @@ export class CreateEstudianteDto {
   @Type(() => Number)
   @ApiProperty({ description: 'ID del curso' })
   readonly cursoId: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Type(() => Number)
+  @ApiPropertyOptional({
+    type: [Number],
+    description: 'IDs de usuarios con rol ACUDIENTE asociados',
+  })
+  readonly acudienteUserIds?: number[];
 }
 
 export class UpdateEstudianteDto extends PartialType(CreateEstudianteDto) {}

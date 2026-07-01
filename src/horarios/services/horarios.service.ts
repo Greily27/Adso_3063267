@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
 
 import { Asignacion } from 'src/asignaciones/entities/asignacione.entity';
 import { CreateHorarioDto } from '../dto/create-horario.dto';
@@ -19,9 +21,15 @@ export class HorariosService {
 
     @InjectRepository(Asignacion)
     private readonly asignacionRepository: Repository<Asignacion>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(createHorarioDto: CreateHorarioDto): Promise<Horario> {
+  async create(
+    createHorarioDto: CreateHorarioDto,
+    usuarioId: number,
+  ): Promise<Horario> {
+    await this.assertPuedeGestionar(usuarioId);
     const asignacion = await this.findAsignacion(createHorarioDto.asignacionId);
 
     this.validateRangoHoras(
@@ -43,8 +51,33 @@ export class HorariosService {
     return await this.horarioRepository.save(horario);
   }
 
-  async findAll(): Promise<Horario[]> {
-    return await this.horarioRepository.find({
+  async findAll(usuarioId: number): Promise<Horario[]> {
+    const usuario = await this.findUsuario(usuarioId);
+    const roles = this.getRoles(usuario);
+    const where =
+      roles.includes('ACUDIENTE') ||
+      roles.some((role) =>
+        [
+          'ADMIN',
+          'ADMINISTRADOR',
+          'AUXILIAR ADMINISTRATIVO',
+          'AUXILIAR_ADMINISTRATIVO',
+        ].includes(role),
+      )
+        ? {}
+        : roles.includes('DOCENTE')
+          ? { asignacion: { docenteId: usuario.id } }
+          : {
+              asignacion: {
+                cursoId:
+                  usuario.estudiante?.curso?.id ??
+                  usuario.acudidos?.[0]?.curso?.id ??
+                  -1,
+              },
+            };
+
+    const horarios = await this.horarioRepository.find({
+      where,
       relations: [
         'asignacion',
         'asignacion.curso',
@@ -55,19 +88,23 @@ export class HorariosService {
         idHorario: 'ASC',
       },
     });
+
+    if (roles.includes('ACUDIENTE')) {
+      const cursos = new Set(
+        usuario.acudidos?.map((estudiante) => estudiante.curso?.id) ?? [],
+      );
+      return horarios.filter((horario) =>
+        cursos.has(horario.asignacion.cursoId),
+      );
+    }
+
+    return horarios;
   }
 
-  async findOne(id: number): Promise<Horario> {
-    const horario = await this.horarioRepository.findOne({
-      where: { idHorario: id },
-      relations: [
-        'asignacion',
-        'asignacion.curso',
-        'asignacion.materia',
-        'asignacion.docente',
-      ],
-    });
-
+  async findOne(id: number, usuarioId: number): Promise<Horario> {
+    const horario = (await this.findAll(usuarioId)).find(
+      (item) => item.idHorario === id,
+    );
     if (!horario) {
       throw new NotFoundException(`No se encontro el horario con id ${id}`);
     }
@@ -78,8 +115,10 @@ export class HorariosService {
   async update(
     id: number,
     updateHorarioDto: UpdateHorarioDto,
+    usuarioId: number,
   ): Promise<Horario> {
-    const horario = await this.findOne(id);
+    await this.assertPuedeGestionar(usuarioId);
+    const horario = await this.findOneInternal(id);
     const asignacionId = updateHorarioDto.asignacionId ?? horario.asignacionId;
     const asignacion = await this.findAsignacion(asignacionId);
     const dia = updateHorarioDto.dia ?? horario.dia;
@@ -106,8 +145,9 @@ export class HorariosService {
     return await this.horarioRepository.save(horario);
   }
 
-  async remove(id: number): Promise<Horario> {
-    const horario = await this.findOne(id);
+  async remove(id: number, usuarioId: number): Promise<Horario> {
+    await this.assertPuedeGestionar(usuarioId);
+    const horario = await this.findOneInternal(id);
 
     return await this.horarioRepository.remove(horario);
   }
@@ -122,6 +162,56 @@ export class HorariosService {
     }
 
     return asignacion;
+  }
+
+  private async findOneInternal(id: number) {
+    const horario = await this.horarioRepository.findOne({
+      where: { idHorario: id },
+      relations: ['asignacion'],
+    });
+    if (!horario) {
+      throw new NotFoundException(`No se encontro el horario con id ${id}`);
+    }
+    return horario;
+  }
+
+  private async findUsuario(id: number) {
+    const usuario = await this.userRepository.findOne({
+      where: { id },
+      relations: [
+        'roles',
+        'estudiante',
+        'estudiante.curso',
+        'acudidos',
+        'acudidos.curso',
+      ],
+    });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+    return usuario;
+  }
+
+  private getRoles(usuario: User): string[] {
+    return (
+      usuario.roles?.map((role) => String(role.name).trim().toUpperCase()) ?? []
+    );
+  }
+
+  private async assertPuedeGestionar(usuarioId: number) {
+    const roles = this.getRoles(await this.findUsuario(usuarioId));
+    if (
+      !roles.some((role) =>
+        [
+          'ADMIN',
+          'ADMINISTRADOR',
+          'AUXILIAR ADMINISTRATIVO',
+          'AUXILIAR_ADMINISTRATIVO',
+        ].includes(role),
+      )
+    ) {
+      throw new ForbiddenException(
+        'El acudiente solo puede consultar horarios',
+      );
+    }
   }
 
   private validateRangoHoras(horaInicio: string, horaFin: string) {

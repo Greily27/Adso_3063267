@@ -72,6 +72,9 @@ export class User {
   @OneToOne(() => Estudiante, (estudiante) => estudiante.user)
   estudiante: Estudiante;
 
+  @ManyToMany(() => Estudiante, (estudiante) => estudiante.acudientes)
+  acudidos: Estudiante[];
+
   @OneToMany(() => ReservaAuditorio, (reserva) => reserva.usuario)
   reservasAuditorio: ReservaAuditorio[];
 }

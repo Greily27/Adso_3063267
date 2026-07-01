@@ -6,14 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { mkdir, writeFile } from 'fs/promises';
 import { basename, extname, join } from 'path';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Estudiante } from '../../estudiantes/entities/estudiante.entity';
 import { Nota } from '../../notas/entities/nota.entity';
-import {
-  GenerarBoletinesDto,
-  PublicarBoletinesDto,
-} from '../dto/boletin.dto';
+import { User } from '../../users/entities/user.entity';
+import { GenerarBoletinesDto, PublicarBoletinesDto } from '../dto/boletin.dto';
 import { Boletin, EstadoBoletin } from '../entities/boletin.entity';
 
 export interface BoletinPublicadoResponse {
@@ -40,7 +38,7 @@ export class BoletinesService {
     private readonly notaRepository: Repository<Nota>,
   ) {}
 
-  async findMine(user: any): Promise<Boletin[]> {
+  async findMine(user: User): Promise<Boletin[]> {
     const estudianteId = await this.findEstudianteIdByUser(user.id);
 
     return await this.boletinRepository.find({
@@ -56,7 +54,67 @@ export class BoletinesService {
     });
   }
 
-  async findMineByPeriodo(user: any, periodoId: number): Promise<Boletin> {
+  async findAcudidos(user: User): Promise<Boletin[]> {
+    const estudianteIds = await this.findEstudianteIdsByAcudiente(user);
+    if (!estudianteIds.length) return [];
+
+    return this.boletinRepository.find({
+      where: {
+        estudianteId: In(estudianteIds),
+        estado: EstadoBoletin.PUBLICADO,
+      },
+      order: {
+        estudianteId: 'ASC',
+        periodoId: 'ASC',
+        fechaGeneracion: 'DESC',
+      },
+    });
+  }
+
+  async findAcudidoByPeriodo(
+    user: User,
+    estudianteId: number,
+    periodoId: number,
+  ): Promise<Boletin> {
+    await this.assertEstudianteAsociado(user, estudianteId);
+    const boletin = await this.boletinRepository.findOne({
+      where: {
+        estudianteId,
+        periodoId,
+        estado: EstadoBoletin.PUBLICADO,
+      },
+      order: { fechaGeneracion: 'DESC', id: 'DESC' },
+    });
+    if (!boletin) {
+      throw new NotFoundException(
+        `No se encontro boletin publicado para el periodo ${periodoId}`,
+      );
+    }
+    return boletin;
+  }
+
+  async findAcudidoForDownload(
+    user: User,
+    estudianteId: number,
+    boletinId: number,
+  ): Promise<Boletin> {
+    await this.assertEstudianteAsociado(user, estudianteId);
+    const boletin = await this.boletinRepository.findOne({
+      where: {
+        id: boletinId,
+        estudianteId,
+        estado: EstadoBoletin.PUBLICADO,
+      },
+    });
+    if (!boletin) {
+      throw new NotFoundException(
+        `No se encontro el boletin con id ${boletinId}`,
+      );
+    }
+    return boletin;
+  }
+
+  async findMineByPeriodo(user: User, periodoId: number): Promise<Boletin> {
     const estudianteId = await this.findEstudianteIdByUser(user.id);
     const boletin = await this.boletinRepository.findOne({
       where: {
@@ -79,7 +137,7 @@ export class BoletinesService {
     return boletin;
   }
 
-  async findMineForDownload(user: any, id: number): Promise<Boletin> {
+  async findMineForDownload(user: User, id: number): Promise<Boletin> {
     const estudianteId = await this.findEstudianteIdByUser(user.id);
     const boletin = await this.boletinRepository.findOne({
       where: {
@@ -97,13 +155,12 @@ export class BoletinesService {
   }
 
   async generar(
-    user: any,
+    user: User,
     generarBoletinesDto: GenerarBoletinesDto,
   ): Promise<Boletin[]> {
     this.validateAdminOrDocente(user);
 
-    const { cursoId, periodoId, archivoUrl, rutaArchivo } =
-      generarBoletinesDto;
+    const { cursoId, periodoId, archivoUrl, rutaArchivo } = generarBoletinesDto;
 
     const estudiantes = await this.estudianteRepository
       .createQueryBuilder('estudiante')
@@ -172,7 +229,7 @@ export class BoletinesService {
   }
 
   async publicarLote(
-    user: any,
+    user: User,
     publicarBoletinesDto: PublicarBoletinesDto,
     baseUrl: string,
   ): Promise<BoletinPublicadoResponse[]> {
@@ -217,7 +274,7 @@ export class BoletinesService {
     return boletines.map((boletin) => this.toPublicadoResponse(boletin));
   }
 
-  async publicar(user: any, id: number): Promise<Boletin> {
+  async publicar(user: User, id: number): Promise<Boletin> {
     this.validateAdminOrDocente(user);
 
     const boletin = await this.boletinRepository.findOne({
@@ -250,8 +307,32 @@ export class BoletinesService {
     return estudiante.id;
   }
 
-  private validateAdminOrDocente(user: any) {
-    const roles = user?.roles?.map((role) => role.name?.toUpperCase()) ?? [];
+  private async findEstudianteIdsByAcudiente(user: User): Promise<number[]> {
+    const roles =
+      user.roles?.map((role) => String(role.name).trim().toUpperCase()) ?? [];
+    if (!roles.includes('ACUDIENTE')) {
+      throw new ForbiddenException('El usuario autenticado no es acudiente');
+    }
+
+    const estudiantes = await this.estudianteRepository.find({
+      where: { acudientes: { id: user.id } },
+      relations: ['acudientes'],
+    });
+    return estudiantes.map((estudiante) => estudiante.id);
+  }
+
+  private async assertEstudianteAsociado(user: User, estudianteId: number) {
+    const ids = await this.findEstudianteIdsByAcudiente(user);
+    if (!ids.includes(estudianteId)) {
+      throw new ForbiddenException(
+        'El estudiante no está asociado al acudiente',
+      );
+    }
+  }
+
+  private validateAdminOrDocente(user: User) {
+    const roles =
+      user.roles?.map((role) => String(role.name).toUpperCase()) ?? [];
     const autorizado = roles.some((role) =>
       ['ADMIN', 'ADMINISTRADOR', 'DOCENTE'].includes(role),
     );

@@ -1,8 +1,15 @@
-import {BadRequestException,Injectable,NotFoundException,} from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Curso } from 'src/cursos/entities/curso.entity';
-import {CreateEstudianteDto,UpdateEstudianteDto,} from '../dto/estudiante.dto';
+import {
+  CreateEstudianteDto,
+  UpdateEstudianteDto,
+} from '../dto/estudiante.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Estudiante } from '../entities/estudiante.entity';
 
@@ -21,7 +28,7 @@ export class EstudiantesService {
 
   //CREAR
   async create(dto: CreateEstudianteDto) {
-    const { userId, cursoId, ...data } = dto;
+    const { userId, cursoId, acudienteUserIds, ...data } = dto;
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['estudiante'],
@@ -42,22 +49,55 @@ export class EstudiantesService {
       ...data,
       user,
       curso,
+      acudientes: await this.findAcudientes(acudienteUserIds),
     });
-    return await this.estudianteRepository.save(estudiante);
+    return this.toSafeResponse(
+      await this.estudianteRepository.save(estudiante),
+    );
   }
 
   //LISTAR
   async findAll() {
-    return await this.estudianteRepository.find({
-      relations: ['user', 'curso'],
+    const estudiantes = await this.estudianteRepository.find({
+      relations: ['user', 'curso', 'acudientes', 'acudientes.roles'],
     });
+    return estudiantes.map((estudiante) => this.toSafeResponse(estudiante));
   }
 
   //OBTENER UNO
   async findOne(id: number) {
+    return this.toSafeResponse(await this.findOneEntity(id));
+  }
+
+  async findAcudidos(usuarioId: number) {
+    const usuario = await this.userRepository.findOne({
+      where: { id: usuarioId },
+      relations: [
+        'roles',
+        'acudidos',
+        'acudidos.user',
+        'acudidos.curso',
+        'acudidos.acudientes',
+      ],
+    });
+
+    if (
+      !usuario?.roles?.some(
+        (role) => String(role.name).trim().toUpperCase() === 'ACUDIENTE',
+      )
+    ) {
+      throw new BadRequestException('El usuario no tiene el rol ACUDIENTE');
+    }
+
+    return (usuario.acudidos ?? []).map((estudiante) =>
+      this.toSafeResponse(estudiante),
+    );
+  }
+
+  private async findOneEntity(id: number) {
     const estudiante = await this.estudianteRepository.findOne({
       where: { id },
-      relations: ['user', 'curso'],
+      relations: ['user', 'curso', 'acudientes', 'acudientes.roles'],
     });
     if (!estudiante) {
       throw new NotFoundException('Estudiante no encontrado');
@@ -67,11 +107,13 @@ export class EstudiantesService {
 
   //ACTUALIZAR
   async update(id: number, dto: UpdateEstudianteDto) {
-    const estudiante = await this.findOne(id);
+    const estudiante = await this.findOneEntity(id);
+    const { cursoId, userId, acudienteUserIds, ...data } = dto;
+    void userId;
     //actualizar curso si viene
-    if (dto.cursoId) {
+    if (cursoId) {
       const curso = await this.cursoRepository.findOne({
-        where: { id: dto.cursoId },
+        where: { id: cursoId },
       });
       if (!curso) {
         throw new NotFoundException('Curso no encontrado');
@@ -79,10 +121,69 @@ export class EstudiantesService {
       estudiante.curso = curso;
     }
 
-    //actualizar datos
-    Object.assign(estudiante, dto);
+    if (acudienteUserIds !== undefined) {
+      estudiante.acudientes = await this.findAcudientes(acudienteUserIds);
+    }
 
-    return await this.estudianteRepository.save(estudiante);
+    Object.assign(estudiante, data);
+
+    return this.toSafeResponse(
+      await this.estudianteRepository.save(estudiante),
+    );
   }
 
+  private async findAcudientes(ids?: number[]): Promise<User[]> {
+    if (!ids?.length) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(ids)];
+    const acudientes = await this.userRepository.find({
+      where: { id: In(uniqueIds) },
+      relations: ['roles'],
+    });
+
+    if (acudientes.length !== uniqueIds.length) {
+      throw new NotFoundException('Uno o varios acudientes no existen');
+    }
+
+    const invalido = acudientes.find(
+      (acudiente) =>
+        !acudiente.roles?.some((role) =>
+          ['ACUDIENTE'].includes(String(role.name).trim().toUpperCase()),
+        ),
+    );
+
+    if (invalido) {
+      throw new BadRequestException(
+        `El usuario ${invalido.id} no tiene el rol ACUDIENTE`,
+      );
+    }
+
+    return acudientes;
+  }
+
+  private toSafeResponse(estudiante: Estudiante) {
+    return {
+      ...estudiante,
+      user: this.sanitizeUser(estudiante.user),
+      acudientes:
+        estudiante.acudientes?.map((acudiente) =>
+          this.sanitizeUser(acudiente),
+        ) ?? [],
+    };
+  }
+
+  private sanitizeUser(user: User) {
+    const {
+      password: _password,
+      resetPasswordToken: _resetPasswordToken,
+      resetPasswordTokenExpires: _resetPasswordTokenExpires,
+      ...safeUser
+    } = user;
+    void _password;
+    void _resetPasswordToken;
+    void _resetPasswordTokenExpires;
+    return safeUser;
+  }
 }
