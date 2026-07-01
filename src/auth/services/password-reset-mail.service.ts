@@ -60,13 +60,13 @@ export class PasswordResetMailService {
       const info = await transporter.sendMail({
         from,
         to: email,
-        subject: 'Recuperacion de contrasena',
-        text: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
+        subject: 'Recuperación de contraseña | I.E.T. Plinio Mendoza Neira',
+        text: this.buildPasswordResetEmailText(resetUrl),
         html: this.buildPasswordResetEmailHtml(resetUrl),
       });
 
       this.logger.log(
-        `Correo de recuperacion procesado para ${email}. Accepted: ${info.accepted?.join(', ') || 'ninguno'}. Rejected: ${info.rejected?.join(', ') || 'ninguno'}. Response: ${info.response}. Message ID: ${info.messageId}`,
+        `Correo de recuperacion procesado para ${email}. Accepted: ${JSON.stringify(info.accepted ?? [])}. Rejected: ${JSON.stringify(info.rejected ?? [])}. Response: ${info.response}. Message ID: ${info.messageId}`,
       );
     } catch (error) {
       this.logger.error(
@@ -103,11 +103,11 @@ export class PasswordResetMailService {
       body: JSON.stringify({
         sender: {
           email: from,
-          name: 'Colegio Plinista',
+          name: 'I.E.T. Plinio Mendoza Neira',
         },
         to: [{ email }],
-        subject: 'Recuperacion de contrasena',
-        textContent: `Recibimos una solicitud para recuperar tu contrasena. Ingresa al siguiente enlace para crear una nueva: ${resetUrl}. Este enlace expira en 1 hora.`,
+        subject: 'Recuperación de contraseña | I.E.T. Plinio Mendoza Neira',
+        textContent: this.buildPasswordResetEmailText(resetUrl),
         htmlContent: this.buildPasswordResetEmailHtml(resetUrl),
       }),
     });
@@ -118,7 +118,9 @@ export class PasswordResetMailService {
       this.logger.error(
         `Fallo Brevo API al enviar recuperacion a ${email}. Status: ${response.status}. Response: ${responseBody}`,
       );
-      throw new Error(`Brevo API request failed with status ${response.status}`);
+      throw new Error(
+        `Brevo API request failed with status ${response.status}`,
+      );
     }
 
     this.logger.log(
@@ -156,7 +158,7 @@ export class PasswordResetMailService {
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Recuperacion de contraseña</title>
+          <title>Recuperación de contraseña</title>
         </head>
         <body style="margin:0; padding:0; background-color:#f3f6fb; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f3f6fb; padding:32px 16px;">
@@ -166,32 +168,35 @@ export class PasswordResetMailService {
                   <tr>
                     <td style="background-color:#0f766e; padding:28px 32px; text-align:center;">
                       <div style="font-size:13px; letter-spacing:1.4px; text-transform:uppercase; color:#ccfbf1; font-weight:700;">
-                        Colegio Plinista
+                        I.E.T. Plinio Mendoza Neira
                       </div>
                       <h1 style="margin:10px 0 0; font-size:26px; line-height:1.25; color:#ffffff;">
-                        Recuperacion de contrasena
+                        Recuperación de contraseña
                       </h1>
                     </td>
                   </tr>
                   <tr>
                     <td style="padding:32px;">
                       <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">
-                        Recibimos una solicitud para cambiar la contraseña de tu cuenta.
+                        Hola, <strong>Usuario Colplinista</strong>:
                       </p>
                       <p style="margin:0 0 24px; font-size:16px; line-height:1.6;">
-                        Haz clic en el siguiente boton para crear una nueva contraseña. Por seguridad, este enlace expira en 1 hora.
+                        Recibimos una solicitud para restablecer la contraseña de tu cuenta.
+                      </p>
+                      <p style="margin:0 0 24px; font-size:16px; line-height:1.6;">
+                        Haz clic en el siguiente botón para crear una nueva contraseña. Por seguridad, este enlace vence en una hora.
                       </p>
                       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
                         <tr>
                           <td style="border-radius:8px; background-color:#0f766e;">
                             <a href="${resetUrl}" style="display:inline-block; padding:14px 24px; font-size:16px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:8px;">
-                              Cambiar contrasena
+                              Restablecer contraseña
                             </a>
                           </td>
                         </tr>
                       </table>
                       <p style="margin:0 0 8px; font-size:14px; line-height:1.6; color:#4b5563;">
-                        Si el boton no funciona, copia y pega este enlace en tu navegador:
+                        Si el botón no funciona, copia y pega este enlace en tu navegador:
                       </p>
                       <p style="margin:0; font-size:13px; line-height:1.6; word-break:break-all;">
                         <a href="${resetUrl}" style="color:#0f766e; text-decoration:underline;">${resetUrl}</a>
@@ -201,7 +206,7 @@ export class PasswordResetMailService {
                   <tr>
                     <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb;">
                       <p style="margin:0; font-size:13px; line-height:1.6; color:#6b7280; text-align:center;">
-                        Si no solicitaste este cambio, puedes ignorar este correo.
+                        Si no solicitaste este cambio, puedes ignorar este correo de forma segura.
                       </p>
                     </td>
                   </tr>
@@ -212,6 +217,18 @@ export class PasswordResetMailService {
         </body>
       </html>
     `;
+  }
+
+  private buildPasswordResetEmailText(resetUrl: string): string {
+    return [
+      'Hola, Usuario Colplinista:',
+      '',
+      'Recibimos una solicitud para restablecer la contraseña de tu cuenta.',
+      `Utiliza el siguiente enlace para crear una nueva contraseña: ${resetUrl}`,
+      '',
+      'Por seguridad, este enlace vence en una hora.',
+      'Si no solicitaste este cambio, puedes ignorar este correo de forma segura.',
+    ].join('\n');
   }
 
   private isPlaceholderSmtpConfig(user: string, password: string): boolean {
