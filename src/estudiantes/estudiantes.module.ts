@@ -5,12 +5,11 @@ import { User } from 'src/users/entities/user.entity';
 import { EstudiantesService } from './services/estudiantes.service';
 import { EstudiantesController } from './controllers/estudiantes.controller';
 import { Curso } from 'src/cursos/entities/curso.entity';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Estudiante, User, Curso]),
-  ],
+  imports: [TypeOrmModule.forFeature([Estudiante, User, Curso]), AuthModule],
   controllers: [EstudiantesController],
   providers: [EstudiantesService],
 })
-export class EstudiantesModule { }
+export class EstudiantesModule {}

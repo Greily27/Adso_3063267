@@ -22,6 +22,7 @@ import { BoletinesModule } from './boletines/boletines.module';
 import { HorariosModule } from './horarios/horarios.module';
 import { AuditoriosModule } from './auditorios/auditorios.module';
 import { GuiasModule } from './guias/guias.module';
+import { EventosModule } from './eventos/eventos.module';
 import config from './config';
 
 @Module({
@@ -66,6 +67,7 @@ import config from './config';
     PeriodoModule,
     BoletinesModule,
     GuiasModule,
+    EventosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

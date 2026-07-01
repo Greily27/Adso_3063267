@@ -7,6 +7,8 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
@@ -15,8 +17,12 @@ import {
   UpdateObservadorDto,
 } from '../dto/observador.dto';
 import { ObservadoresService } from '../services/observadores.service';
+import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Observadores')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('observadores')
 export class ObservadoresController {
   constructor(private readonly observadoresService: ObservadoresService) {}
@@ -24,20 +30,20 @@ export class ObservadoresController {
   @Post()
   @ApiOperation({ summary: 'Crear observador' })
   @ApiResponse({ status: 201, description: 'Observador creado correctamente' })
-  create(@Body() createObservadorDto: CreateObservadorDto) {
-    return this.observadoresService.create(createObservadorDto);
+  create(@Body() createObservadorDto: CreateObservadorDto, @Req() req) {
+    return this.observadoresService.create(createObservadorDto, req.user.id);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar observadores' })
-  findAll() {
-    return this.observadoresService.findAll();
+  findAll(@Req() req) {
+    return this.observadoresService.findAll(req.user.id);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un observador por ID' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.observadoresService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.observadoresService.findOne(id, req.user.id);
   }
 
   @Patch(':id')
@@ -45,8 +51,13 @@ export class ObservadoresController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateObservadorDto: UpdateObservadorDto,
+    @Req() req,
   ) {
-    return this.observadoresService.update(id, updateObservadorDto);
+    return this.observadoresService.update(
+      id,
+      updateObservadorDto,
+      req.user.id,
+    );
   }
 
   @Delete(':id')
@@ -55,7 +66,7 @@ export class ObservadoresController {
     status: 200,
     description: 'Observador eliminado correctamente',
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.observadoresService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.observadoresService.remove(id, req.user.id);
   }
 }

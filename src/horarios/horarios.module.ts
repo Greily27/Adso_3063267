@@ -4,9 +4,11 @@ import { Asignacion } from 'src/asignaciones/entities/asignacione.entity';
 import { HorariosController } from './controllers/horarios.controller';
 import { Horario } from './entities/horario.entity';
 import { HorariosService } from './services/horarios.service';
+import { User } from 'src/users/entities/user.entity';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Horario, Asignacion])],
+  imports: [TypeOrmModule.forFeature([Horario, Asignacion, User]), AuthModule],
   controllers: [HorariosController],
   providers: [HorariosService],
   exports: [HorariosService],
