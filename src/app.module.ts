@@ -48,6 +48,7 @@ import config from './config';
         BREVO_API_KEY: Joi.string().optional(),
         RESET_PASSWORD_BASE_URL: Joi.string().uri().optional(),
         CORS_ORIGINS: Joi.string().optional(),
+        UPLOADS_DIR: Joi.string().optional(),
       }),
     }),
     DatabaseModule,

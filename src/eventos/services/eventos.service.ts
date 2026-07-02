@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { unlink } from 'fs/promises';
-import { basename, join } from 'path';
+import { basename } from 'path';
 import { Repository } from 'typeorm';
+import { getUploadPath } from 'src/common/uploads';
 import { User } from 'src/users/entities/user.entity';
 import { CreateEventoDto, UpdateEventoDto } from '../dto/evento.dto';
 import {
@@ -21,8 +22,8 @@ export class EventosService {
   private readonly rolesEditores = [
     'ADMIN',
     'ADMINISTRADOR',
-    'AUXILIAR ADMINISTRATIVO',
-    'AUXILIAR_ADMINISTRATIVO',
+    'AUXADMINISTRATIVO',
+    'AUXILIARADMINISTRATIVO',
   ];
 
   constructor(
@@ -144,7 +145,7 @@ export class EventosService {
 
   private puedeEditar(usuario: User) {
     return usuario.roles?.some((role) =>
-      this.rolesEditores.includes(String(role.name).trim().toUpperCase()),
+      this.rolesEditores.includes(this.normalizeRoleName(role.name)),
     );
   }
 
@@ -158,7 +159,7 @@ export class EventosService {
 
   private getDestinatario(usuario: User): DestinatarioEvento {
     const roles =
-      usuario.roles?.map((role) => String(role.name).toUpperCase()) ?? [];
+      usuario.roles?.map((role) => this.normalizeRoleName(role.name)) ?? [];
     if (roles.some((role) => role === 'DOCENTE')) {
       return DestinatarioEvento.DOCENTE;
     }
@@ -171,6 +172,14 @@ export class EventosService {
     throw new ForbiddenException(
       'El rol del usuario no puede consultar eventos',
     );
+  }
+
+  private normalizeRoleName(roleName: unknown): string {
+    return String(roleName)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase();
   }
 
   private validateDates(fechaInicio: string, fechaFin?: string | null) {
@@ -190,7 +199,7 @@ export class EventosService {
       decodeURIComponent(imagenUrl.slice(index + marker.length)),
     );
     try {
-      await unlink(join(process.cwd(), 'uploads', 'eventos', filename));
+      await unlink(getUploadPath('eventos', filename));
     } catch {
       return;
     }
