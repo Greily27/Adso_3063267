@@ -13,7 +13,7 @@ import { Materia } from 'src/materias/entities/materia.entity';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { getUploadPath } from '../../../common/uploads';
 
 @Injectable()
 export class UsersService {
@@ -263,11 +263,11 @@ export class UsersService {
       throw new BadRequestException('La foto no puede superar 2 MB');
     }
 
-    const uploadDir = join(process.cwd(), 'uploads', 'users');
+    const uploadDir = getUploadPath('users');
     await mkdir(uploadDir, { recursive: true });
 
     const filename = `${Date.now()}-${randomUUID()}.${extension}`;
-    await writeFile(join(uploadDir, filename), buffer);
+    await writeFile(getUploadPath('users', filename), buffer);
 
     return `users/${filename}`;
   }

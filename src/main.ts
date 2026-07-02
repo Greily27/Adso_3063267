@@ -2,8 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { join } from 'path';
 import * as express from 'express';
+import { getUploadsRoot } from './common/uploads';
 
 function getCorsOrigins(): string[] {
   return (process.env.CORS_ORIGINS || 'https://colplinista-frontend.onrender.com')
@@ -27,7 +27,7 @@ async function bootstrap() {
     ],
     credentials: true,
   });
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+  app.use('/uploads', express.static(getUploadsRoot()));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   const config = new DocumentBuilder()
     .setTitle('API')

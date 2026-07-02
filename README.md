@@ -96,3 +96,15 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Archivos subidos en Render
+
+Las fotos de perfil y las imágenes de eventos se escriben en `UPLOADS_DIR`.
+En desarrollo, si la variable no existe, se usa la carpeta local `uploads`.
+
+Para conservar archivos entre reinicios y despliegues de Render:
+
+1. Agrega un disco persistente al servicio backend.
+2. Usa como ruta de montaje `/opt/render/project/src/uploads`.
+3. Configura `UPLOADS_DIR=/opt/render/project/src/uploads`.
+
+Los archivos que ya se hayan perdido del disco efímero deben cargarse de nuevo.

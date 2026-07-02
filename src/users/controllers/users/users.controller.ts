@@ -17,12 +17,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname } from 'path';
 import { Modules } from '../../../auth/decorators/modules.decorator';
 import { ModulesGuard } from '../../../auth/guards/modules.guard.guard';
 import { CreateUserDto, UpdateUserDto } from 'src/users/dtos/user.dto';
 import { UsersService } from '../../../users/services/users/users.service';
 import { JwtAuthGuard } from '../../../auth/guards/auth.guard';
+import { getUploadPath } from '../../../common/uploads';
 
 @ApiBearerAuth()
 // @Modules('users')
@@ -59,7 +60,7 @@ export class UsersController {
     FileInterceptor('photo', {
       storage: diskStorage({
         destination: (_req, _file, cb) => {
-          const uploadDir = join(process.cwd(), 'uploads', 'users');
+          const uploadDir = getUploadPath('users');
           mkdirSync(uploadDir, { recursive: true });
           cb(null, uploadDir);
         },

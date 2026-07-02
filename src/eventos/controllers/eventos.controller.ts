@@ -23,16 +23,17 @@ import {
 } from '@nestjs/swagger';
 import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname } from 'path';
 import { randomUUID } from 'crypto';
 import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
+import { getUploadPath } from 'src/common/uploads';
 import { CreateEventoDto, UpdateEventoDto } from '../dto/evento.dto';
 import { EventosService } from '../services/eventos.service';
 
 const imagenInterceptor = FileInterceptor('imagen', {
   storage: diskStorage({
     destination: (_req, _file, cb) => {
-      const directory = join(process.cwd(), 'uploads', 'eventos');
+      const directory = getUploadPath('eventos');
       mkdirSync(directory, { recursive: true });
       cb(null, directory);
     },
