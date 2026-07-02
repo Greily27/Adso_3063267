@@ -56,14 +56,7 @@ export class HorariosService {
     const roles = this.getRoles(usuario);
     const where =
       roles.includes('ACUDIENTE') ||
-      roles.some((role) =>
-        [
-          'ADMIN',
-          'ADMINISTRADOR',
-          'AUXILIAR ADMINISTRATIVO',
-          'AUXILIAR_ADMINISTRATIVO',
-        ].includes(role),
-      )
+      roles.some((role) => this.isHorarioManagerRole(role))
         ? {}
         : roles.includes('DOCENTE')
           ? { asignacion: { docenteId: usuario.id } }
@@ -192,26 +185,34 @@ export class HorariosService {
 
   private getRoles(usuario: User): string[] {
     return (
-      usuario.roles?.map((role) => String(role.name).trim().toUpperCase()) ?? []
+      usuario.roles?.map((role) => this.normalizeRoleName(role.name)) ?? []
     );
   }
 
   private async assertPuedeGestionar(usuarioId: number) {
     const roles = this.getRoles(await this.findUsuario(usuarioId));
-    if (
-      !roles.some((role) =>
-        [
-          'ADMIN',
-          'ADMINISTRADOR',
-          'AUXILIAR ADMINISTRATIVO',
-          'AUXILIAR_ADMINISTRATIVO',
-        ].includes(role),
-      )
-    ) {
+    if (!roles.some((role) => this.isHorarioManagerRole(role))) {
       throw new ForbiddenException(
-        'El acudiente solo puede consultar horarios',
+        'Tu rol solo tiene permiso para consultar horarios',
       );
     }
+  }
+
+  private isHorarioManagerRole(role: string): boolean {
+    return [
+      'ADMIN',
+      'ADMINISTRADOR',
+      'AUXADMINISTRATIVO',
+      'AUXILIARADMINISTRATIVO',
+    ].includes(role);
+  }
+
+  private normalizeRoleName(roleName: unknown): string {
+    return String(roleName)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase();
   }
 
   private validateRangoHoras(horaInicio: string, horaFin: string) {
